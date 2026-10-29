@@ -1,0 +1,8 @@
+{
+  "dataset": "KITTI 3D Object Detection",
+  "source": "https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d",
+  "split_source": "REQUIRED: immutable source URL or author-provided archive reference",
+  "train": {"count": 3712, "sha256": "REQUIRED"},
+  "val": {"count": 3769, "sha256": "REQUIRED"},
+  "notes": "Counts describe the intended common split, not a verified local dataset. Populate hashes from independently verified original split files. Do not generate a new random split."
+}

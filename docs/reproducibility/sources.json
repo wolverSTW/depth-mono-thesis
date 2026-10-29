@@ -1,0 +1,27 @@
+{
+  "inspected_date": "2026-10-29",
+  "remote": "https://github.com/wolverSTW/depth-mono-thesis.git",
+  "sources": {
+    "MonoIA": {"url": "https://github.com/alanzhangcs/MonoIA.git", "commit": "69d6ee30ca5e44848727387dd44af6d56d62c24f", "license": "MIT"},
+    "third_party/Depth-Anything-V2": {"url": "https://github.com/DepthAnything/Depth-Anything-V2.git", "commit": "a561b849ebae10a6f5ef49e26c83cbbcd36c71bf", "license": "Apache-2.0; Small weights Apache-2.0, larger weights CC-BY-NC-4.0"}
+  },
+  "checkpoints": {
+    "dav2_small": {
+      "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/03876f8651c73a60fe4c2c48294e09fcb6838fcf/depth_anything_v2_vits.pth",
+      "sha256": "715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378",
+      "path": "checkpoints/depth_anything_v2_vits.pth",
+      "representation": "relative depth, not metres"
+    },
+    "monoia_val": {
+      "url": "https://huggingface.co/zhihao406/MonoIA/resolve/e9c56d4f474bda66de8926f9dae8008c656addf7/MonoIA_KITTI_Val.pth",
+      "sha256": "b9c6f6f5136f426f510fb3473d2ddfc7d0bbce349831a1eb0fa736645c6fcdf8",
+      "path": "checkpoints/MonoIA_KITTI_Val.pth"
+    },
+    "monoia_leaderboard": {
+      "url": "https://huggingface.co/zhihao406/MonoIA/resolve/e9c56d4f474bda66de8926f9dae8008c656addf7/MonoIA_Leaderboard.pth",
+      "sha256": "fe16ff24caf0ecfedc9ff106f4414c1a3bfca56fb006d6d183ce9a7fa84abafc",
+      "path": "checkpoints/MonoIA_Leaderboard.pth",
+      "restriction": "Never evaluate on validation: potential trainval training leakage. Test submission not automated."
+    }
+  }
+}
