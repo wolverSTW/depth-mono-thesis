@@ -29,6 +29,10 @@ if [[ "$action" == setup ]]; then
   [[ $(uname -s) == Linux ]] || { echo 'Setup requires Linux; use local verification on Windows.' >&2; exit 2; }
   ((${#forward[@]} == 0)) || { echo 'Setup accepts --env-name, --project-dir and common flags only.' >&2; exit 2; }
   command -v nvcc >/dev/null || { echo 'Install CUDA toolkit 12.1/nvcc first.' >&2; exit 2; }
+  nvcc --version | grep -q 'release 12.1,' || { echo 'This project requires CUDA toolkit 12.1.' >&2; exit 2; }
+  export CUDA_HOME=${CUDA_HOME:-/usr/local/cuda}
+  [[ -x "$CUDA_HOME/bin/nvcc" && -d "$CUDA_HOME/nvvm" ]] || { echo 'CUDA_HOME must contain nvcc and NVVM (developer toolkit).' >&2; exit 2; }
+  export MAX_JOBS=${MAX_JOBS:-4}
   command -v conda >/dev/null || { echo 'Install Conda first.' >&2; exit 2; }
   source "$(conda info --base)/etc/profile.d/conda.sh"
   if ! conda run -n "$env_name" python -c 'import sys; assert sys.version_info[:2] == (3,9)' >/dev/null 2>&1; then

@@ -1,5 +1,10 @@
 # Artifact backup and Windows download
 
+Vast.ai is the exclusive GPU provider. [VAST_AI_RUNBOOK.md](VAST_AI_RUNBOOK.md)
+steps 9–10 provide the actual `/workspace/depth-monoia` snapshot, mapped-port SSH,
+Windows SHA-256/restore check and replacement-instance commands. The generic
+paths below illustrate the same existing tools; they are not assumed mounts.
+
 Do not treat a stopped GPU instance as an off-machine backup. Archives contain
 checkpoints, resolved configs, metadata, completed evaluation outputs and logs;
 KITTI data and pretrained downloads are excluded. Source commits must also be
@@ -35,8 +40,8 @@ python scripts/research.py restore `
 Create D:\research-backups beforehand and compare the checksum with the sidecar.
 The restore command verifies both archive and each file, rejects traversal/links
 and refuses existing destinations. This restore check is useful on CPU and does
-not run a model. For Colab/Kaggle, use supported notebook download/output export
-or authorized mounted storage; generic SSH/SCP availability is not assumed.
+not run a model. Use the actual host/port shown in Vast's Connect panel; do not
+assume port 22 is externally mapped to the container's SSH port.
 
 Keep at least one verified off-machine copy before terminating a resource. Inspect
 restored metadata/checkpoint_hashes and retain raw evidence; do not commit large

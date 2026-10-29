@@ -27,7 +27,10 @@ execution: docs/GPU_TRAINING_GUIDE.md; protocol: docs/EVALUATION_PROTOCOL.md.
 Use Python 3.9-compatible code and existing upstream utilities. Keep new orchestration
 outside submodules. Defaults preserve the baseline; explicit batch/seed changes
 must be recorded and applied consistently. No silent AMP or multi-GPU changes.
-Local development is CPU-only. GPU work requires Linux CUDA and persistent storage.
+Local development is CPU-only. Vast.ai is the exclusive GPU training provider.
+GPU work requires Linux CUDA and verified off-host backups; container storage is
+temporary and a Vast volume must not be assumed portable across hosts. Follow
+docs/VAST_AI_RUNBOOK.md. Never rent or start paid training without owner approval.
 
 One command, `python scripts/research.py verify`, combines source/import/config
 checks and relevant operational tests. Do not repeatedly test unchanged code.

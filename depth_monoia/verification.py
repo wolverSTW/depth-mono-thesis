@@ -105,12 +105,13 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
             model, criterion, optimizer, scheduler, warmup, train_loader, val_loader = components(cfg, checkpoint_dir)
             record_hub(metadata)
             result["initialization_assets"] = {k: metadata[k] for k in ("backbone_cache", "compiled_ops")}
-            # G2/G3 use one genuine designated-train sample; full training's
-            # inherited batch size is preserved. No dummy data or val labels.
-            from torch.utils.data import default_collate
-            batch = default_collate([train_loader.dataset[0]])
+            # Exercise the configured batch and original training augmentations.
+            # A single sample cannot establish capacity for baseline batch 16.
+            batch = next(iter(train_loader))
+            if len(batch[0]) != cfg["dataset"]["batch_size"]:
+                raise ValueError("G2 requires a complete configured training batch")
             result["details"]["integration_train_ids"] = batch[3]["img_id"].tolist()
-            g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata)
+            result["details"]["capacity"] = g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata)
             result["G2"] = result["G3"] = "PASS"
         except Exception as error:
             result["details"]["G2_G3"] = type(error).__name__ + ": " + str(error)
@@ -160,6 +161,10 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
             baseline = model.baseline_forward(images, calibs, targets, sizes)
             for key in ("pred_logits", "pred_boxes", "pred_depth", "pred_3d_dim", "pred_angle"):
                 torch.testing.assert_close(actual[key], baseline[key], rtol=0, atol=0)
+            del baseline
+        del actual
+    torch.cuda.synchronize()
+    torch.cuda.reset_peak_memory_stats()
     prepared = Trainer.prepare_targets(None, targets, len(images))
     def step():
         model.train()
@@ -175,6 +180,13 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
         return loss.detach()
     step()
     step()
+    torch.cuda.synchronize()
+    capacity = {"batch_size": len(images), "input_shape": list(images.shape),
+                "dtype": str(images.dtype), "gpu": torch.cuda.get_device_name(),
+                "device_total_bytes": torch.cuda.get_device_properties(0).total_memory,
+                "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
+                "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
+                "scope": "two real configured-batch training steps, including optimizer state; not a full-run VRAM guarantee"}
     if hasattr(model, "fusion"):
         for name, p in model.fusion.named_parameters():
             if p.grad is None or not torch.isfinite(p.grad).all() or not p.grad.abs().sum() > 0:
@@ -209,3 +221,4 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
         torch.testing.assert_close(expected_loss, actual_loss, rtol=1e-5, atol=1e-6)
         for key, value in model.state_dict().items():
             torch.testing.assert_close(value.cpu(), expected[key], rtol=1e-5, atol=1e-6)
+    return capacity

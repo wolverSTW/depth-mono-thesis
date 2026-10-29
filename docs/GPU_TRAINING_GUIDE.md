@@ -1,5 +1,9 @@
 # Full training, monitoring and evaluation
 
+Vast.ai is the exclusive GPU provider. The [single Vast.ai runbook](VAST_AI_RUNBOOK.md)
+gives exact A0/A1/A2/A3 commands, the configured-batch G2/G3 capacity check,
+evaluation paths and Windows backup/replacement-instance recovery commands.
+
 Status: commands prepared, not GPU verified or executed. First complete
 GPU_SETUP_GUIDE.md and matching G1–G4. Source must be committed/clean. All commands
 run from the project root in the activated environment.
@@ -40,9 +44,9 @@ paid runs without approval or assume the original batch fits a given GPU.
 
 ## Monitoring and stopping
 
-Use tmux on an authorized SSH-capable provider, with one training command in the
-session (`tmux new -s depth-monoia`). In notebook providers follow their supported
-interface rather than bypassing it. Monitor persistent artifacts:
+Use tmux on the authorized Vast.ai instance, with one training command in the
+session (`tmux new -s depth-monoia`). Activate Conda and source local.vast.env in
+that shell as the runbook specifies. Monitor artifacts and copy them off-host:
 
 ```bash
 tail -f "$OUTPUT_ROOT/A3_intrinsic_fusion/run_001/logs/events.jsonl"

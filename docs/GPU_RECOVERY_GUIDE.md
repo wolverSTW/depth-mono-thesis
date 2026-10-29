@@ -1,5 +1,11 @@
 # Recover on another compatible GPU machine
 
+Vast.ai is the exclusive provider. Follow [VAST_AI_RUNBOOK.md](VAST_AI_RUNBOOK.md)
+steps 9–10 for exact commands using actual mapped SSH ports and Windows paths.
+Container storage disappears on destruction; do not assume a Vast volume is
+portable to another host. A verified off-host archive and the original source/
+KITTI/pretrained/reference inputs are required for replacement-instance recovery.
+
 Recovery is prepared, not tested on a GPU. No live trained run is available here.
 
 1. Obtain an authorized Linux machine with the documented CUDA/toolchain stack.

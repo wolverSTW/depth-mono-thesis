@@ -1,5 +1,10 @@
 # Checkpoints and run artifacts
 
+For the exact Vast.ai paths/commands and off-host recovery procedure, see
+[VAST_AI_RUNBOOK.md](VAST_AI_RUNBOOK.md), steps 8–10. Each experiment has its own
+run directory. New runs refuse existing destinations; best/last in the active run
+advance intentionally, while previous runs and named backup snapshots remain intact.
+
 No training checkpoints exist yet. This layout is created only by real execution:
 
 ```text

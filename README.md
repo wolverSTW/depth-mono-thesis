@@ -46,6 +46,11 @@ Prioritize A0/A3 when resources are limited. A4 waits for functional A0–A3 evi
 
 ## Installation
 
+Vast.ai is the exclusive GPU training provider. Follow the
+[beginner deployment runbook](docs/VAST_AI_RUNBOOK.md) for the reviewed image,
+hardware/storage estimates, full KITTI A0–A3 commands, evaluation, Windows backups
+and replacement-instance resume. Prepared commands are not GPU verification.
+
 `MonoIA/` and `third_party/Depth-Anything-V2/` are unmodified Git submodules.
 The extension package is `depth_monoia/`. Local branch: `develop`.
 No push is performed without approval. After publication:

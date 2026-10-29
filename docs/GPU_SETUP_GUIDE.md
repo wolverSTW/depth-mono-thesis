@@ -1,5 +1,10 @@
 # Linux CUDA setup and deployment
 
+Vast.ai is now the exclusive GPU training provider. Follow the single
+[Vast.ai deployment runbook](VAST_AI_RUNBOOK.md) for the beginner sequence,
+template/digest, hardware estimates, exact SSH/data/setup commands and recovery.
+The material below preserves the existing stack/provenance explanations.
+
 Status: prepared commands; no GPU instance was created or GPU command executed here.
 Never rent paid resources without owner approval. Scripts configure an existing
 authorized machine; they do not purchase/provision one.
@@ -9,7 +14,8 @@ authorized machine; they do not purchase/provision one.
 Use a Linux NVIDIA machine supporting the documented PyTorch 2.4.1/CUDA 12.1 stack,
 with a CUDA 12.1 **developer toolkit** (nvcc), sufficient RAM/VRAM and persistent
 output storage. The required VRAM has not been measured; do not claim a particular
-GPU will fit batch 16. Run G2 then a capacity check on real data. Any necessary
+GPU will fit batch 16. G2 now uses a full configured real training batch and
+records peak memory; it remains a representative check, not a full-run bound. Any necessary
 batch revision must be explicit and identical across compared experiments.
 
 On the selected machine:
@@ -40,8 +46,9 @@ silently replace a provider's drivers/toolkit.
 
 ## Obtain source and build
 
-The repository must first be pushed with owner approval, or transferred with its
-Git history/submodules. Current development is local; no push is assumed.
+Bootstrap commit 89c6b99 was pushed with owner approval. Subsequent preparation
+changes must first be pushed with separate approval, or transferred with Git
+history/submodules. Use the exact reviewed preparation commit in the runbook.
 
 ```bash
 git clone --recurse-submodules https://github.com/wolverSTW/depth-mono-thesis.git
@@ -95,20 +102,13 @@ G4 JSON requirements are in README.md. No reference metrics are supplied here.
 Only matching PASS evidence permits training. Hardware preflight alone is not
 G1–G4. See GPU_TRAINING_GUIDE.md for training, monitoring, checkpoints and evaluation.
 
-## Provider-specific boundaries
+## Vast.ai boundaries
 
-- **Vast.ai:** select storage and an appropriate developer image in the console
-  only after approval. Container storage is deleted with instance destruction;
-  volumes persist but are tied to a physical host. Keep a verified off-machine
-  archive too. [Official storage guide](https://docs.vast.ai/guides/instances/storage/types).
-- **Colab/Pro:** GPU availability and runtime limits vary. Inspect actual versions
-  and run through the supported notebook interface. Do not use free-tier SSH or
-  bypass its usage limits. Treat the VM as temporary; copy verified archives to
-  durable storage before disconnecting. [Official FAQ](https://research.google.com/colaboratory/faq.html).
-- **Kaggle:** inspect the actual notebook image, accelerator, internet/storage
-  controls and output-retention rules in the account. Do not assume its Python,
-  CUDA or torch match this project. If an isolated compatible environment/toolkit
-  cannot be created, do not silently alter pins. [Official runtime image source](https://github.com/Kaggle/docker-python).
+Use the exact custom SSH template and ephemeral `/workspace/depth-monoia` layout
+in VAST_AI_RUNBOOK.md. Its A100 80 GB and 300 GB disk recommendations are planning
+allowances, not measured guarantees. Use verified off-host archives; a host-local
+volume does not provide replacement-host recovery. Other GPU providers are outside
+the authorized project scope.
 
 Before terminating any machine: request an epoch-boundary stop, verify the last
 checkpoint, make/download/restore-check the archive, and only then use the provider
