@@ -1,0 +1,48 @@
+{
+  "static": {
+    "syntax_files": 12,
+    "configuration_count": 5,
+    "isolated_fusion_checks": "PASS: exact zero-alpha identity and two-step gradients; no KITTI gate evidence",
+    "official_depth_load": "PASS: strict official checkpoint load, all weights frozen, eval mode retained"
+  },
+  "sources": {
+    "MonoIA": "69d6ee30ca5e44848727387dd44af6d56d62c24f",
+    "third_party/Depth-Anything-V2": "a561b849ebae10a6f5ef49e26c83cbbcd36c71bf"
+  },
+  "environment": {
+    "platform": "Windows-10-10.0.18363-SP0",
+    "python": "3.9.25",
+    "packages": {
+      "torch": "2.8.0",
+      "torchvision": "0.23.0",
+      "numpy": "2.0.2",
+      "scipy": "1.13.1",
+      "Pillow": "11.3.0",
+      "PyYAML": "6.0.3",
+      "opencv-python": "5.0.0.93",
+      "scikit-image": "0.24.0",
+      "scikit-learn": "1.6.1",
+      "numba": "0.60.0",
+      "llvmlite": "0.43.0"
+    },
+    "cuda": null,
+    "cudnn": null,
+    "gpu": null,
+    "git_commit": "c3e7a5691e5155007fe1def666d490ad909331f4",
+    "branch": "develop",
+    "dirty": true
+  },
+  "G1": "BLOCKED",
+  "G2": "BLOCKED",
+  "G3": "BLOCKED",
+  "G4": "BLOCKED",
+  "details": {
+    "G1": "Supply verified --manifest and --dataset-root on the GPU machine",
+    "G2_G3_G4": "Pending: Linux CUDA, real KITTI and reference evaluation evidence"
+  },
+  "dav2_checkpoint": {
+    "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/03876f8651c73a60fe4c2c48294e09fcb6838fcf/depth_anything_v2_vits.pth",
+    "sha256": "715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378",
+    "bytes": 99218434
+  }
+}
