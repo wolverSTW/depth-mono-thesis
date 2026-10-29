@@ -1,7 +1,28 @@
 {
   "static": {
-    "syntax_files": 12,
+    "syntax_files": 17,
+    "source_sha256": {
+      "depth_monoia/artifacts.py": "fd87f1dc739d59560e475163aa790fe82bd0e41cfe684239e4529a6894b6a783",
+      "depth_monoia/checkpoint.py": "489e681692f4888172c176cedaeeb819905e736ad8743324d385322732df1f7f",
+      "depth_monoia/config.py": "622c0dbd39f52f2658b1d08c11d2da723a00c1b2bb251b456128559bdddc3f86",
+      "depth_monoia/depth.py": "5efe28ab893c0b69849c6b453cf449080fe3f4976b6b4cf63dda655e47562c29",
+      "depth_monoia/evaluation.py": "3b54cb2e4474796fc6a61b61bbce0c8d3191236836d2e108bfd81fb812da0268",
+      "depth_monoia/events.py": "ab89b0c45afce3c722b8720be425722150ab2cfc7b34701413e5a0a60843e2ca",
+      "depth_monoia/fusion.py": "f5137a0173f6f4afdc5640c7a68f1106373ba76fb8d59a046925d40d1f20080a",
+      "depth_monoia/model.py": "334fbf1e19a77ec65b6373e16108b0e88521baa5507714ac15ba844536f7e4a5",
+      "depth_monoia/provenance.py": "980e5cdc7d4bdb8c0dfcc6cf6e9e760d4e212747a491fc16c53e647c1a49f194",
+      "depth_monoia/reporting.py": "6d2adbc71ae292b6ece3d8a21bf9240f079fd6a9b80207742aa43ff2363121e8",
+      "depth_monoia/runner.py": "7597912b08c0d700e4faa80016a10c846130f5484b25ebf712b833b7dccace11",
+      "depth_monoia/verification.py": "1337843f53b87c17882de504e202270a93dd2d9208e4f6e2c12ca357367975e1",
+      "depth_monoia/__init__.py": "a5094756f466539d3c90216139553d1ac31ba2c74a16ba6c418d7f961f33020b",
+      "scripts/aggregate_results.py": "67f263bff4ba640cc12166aa318fc25cbc2dd65cf68daefe3b109620efbe35bc",
+      "scripts/build_ops.py": "b1dc3420fa345db8d74c4e72c850f4303170208ea60c2c03d05264711fe96062",
+      "scripts/research.py": "4e03bb84ddf86dbcbf69fffb8779a6aef312dde9fea5eb12055b0ba20bf6b179",
+      "tests/test_operations.py": "20bd8e2eb5c3ff82473e03b519e34d78ca82528f33835a5009d736e36e9805eb"
+    },
     "configuration_count": 5,
+    "operational_tests": 6,
+    "shell_syntax": "PASS: 14 Bash syntax checks; Linux execution remains pending",
     "isolated_fusion_checks": "PASS: exact zero-alpha identity and two-step gradients; no KITTI gate evidence",
     "official_depth_load": "PASS: strict official checkpoint load, all weights frozen, eval mode retained"
   },
@@ -12,6 +33,7 @@
   "environment": {
     "platform": "Windows-10-10.0.18363-SP0",
     "python": "3.9.25",
+    "system_tools": {},
     "packages": {
       "torch": "2.8.0",
       "torchvision": "0.23.0",
@@ -28,7 +50,7 @@
     "cuda": null,
     "cudnn": null,
     "gpu": null,
-    "git_commit": "c3e7a5691e5155007fe1def666d490ad909331f4",
+    "git_commit": "a1327cde051c0f3c5183e3e70399081f3251e650",
     "branch": "develop",
     "dirty": true
   },

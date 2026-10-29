@@ -42,3 +42,12 @@ unsupported/custom operations prevent a validated full-model GFLOPs claim.
 Published results, official-weight evaluation and independently trained A0 are
 separate evidence types. Add reviewed real logs/paths/hashes, including negative
 findings, after execution.
+
+## Evidence export readiness
+
+Full evaluation exports predictions, metrics.json/metrics.csv, kitti_eval.txt,
+distance/confidence/resource JSON and evaluation_metadata.json only after actual
+execution. Completion metadata is published last. Aggregation excludes unfinished
+evaluations and separates official pretrained weights from independently trained
+checkpoints; different protocol/code/software groups remain labeled. No comparison
+with populated benchmark measurements exists yet.

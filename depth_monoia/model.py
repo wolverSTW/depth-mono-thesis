@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 import torch
 from torch import nn
 from .config import ROOT
@@ -22,10 +23,11 @@ class DepthMonoIA(nn.Module):
     One GPU per process only. Context is cleared even after a failed forward.
     DataParallel, reentrant forwards and activation checkpointing are unsupported.
     """
-    def __init__(self, detector, depth_cfg):
+    def __init__(self, detector, depth_cfg, checkpoint_dir=None):
         super().__init__()
         self.detector = detector
-        self.prior = FrozenDepthPrior(input_size=depth_cfg["input_size"])
+        prior_path = None if checkpoint_dir is None else Path(checkpoint_dir) / "depth_anything_v2_vits.pth"
+        self.prior = FrozenDepthPrior(checkpoint=prior_path, input_size=depth_cfg["input_size"])
         self.fusion = MultiScaleFusion(depth_cfg["mode"], detector.hidden_dim,
                                        detector.num_feature_levels, depth_cfg["alpha_init"])
         self._context = None
@@ -70,7 +72,7 @@ class DepthMonoIA(nn.Module):
             self._context = None
 
 
-def build_model(cfg):
+def build_model(cfg, checkpoint_dir=None):
     upstream_path()
     from lib.helpers.model_helper import build_model as original_builder
     detector, criterion = original_builder(cfg["model"])
@@ -80,7 +82,7 @@ def build_model(cfg):
     # augmentation or dropout random streams between comparable experiments.
     state = rng_state()
     try:
-        extended = DepthMonoIA(detector, cfg["depth"])
+        extended = DepthMonoIA(detector, cfg["depth"], checkpoint_dir)
     finally:
         restore_rng(state)
     return extended, criterion

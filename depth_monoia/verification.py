@@ -8,17 +8,17 @@ import random
 import numpy as np
 from pathlib import Path
 import torch
-from .config import ROOT, load_config
-from .provenance import check_sources, environment, verify_checkpoint
+from .config import ROOT, load_config, CONFIGS
+from .provenance import check_sources, environment, verify_checkpoint, sha256
 from .fusion import MultiScaleFusion
 
 
 def static_checks():
-    files = list((ROOT / "depth_monoia").glob("*.py")) + list((ROOT / "scripts").glob("*.py"))
+    files = [p for folder in ("depth_monoia", "scripts", "tests") for p in (ROOT / folder).rglob("*.py")]
     for path in files:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     # No CUDA extension import on CPU; import the actual new modules instead.
-    for module in ("config", "provenance", "fusion", "depth", "model", "checkpoint", "evaluation", "runner"):
+    for module in ("config", "provenance", "fusion", "depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting"):
         importlib.import_module("depth_monoia." + module)
     configs = {name: load_config(ROOT / path) for name, path in CONFIGS.items()}
     for name, cfg in configs.items():
@@ -47,23 +47,38 @@ def static_checks():
         for name, p in fusion.named_parameters():
             if p.grad is None or not torch.isfinite(p.grad).all() or not p.grad.abs().sum() > 0:
                 raise AssertionError("Fusion gradient missing: " + mode + "/" + name)
-    return {"syntax_files": len(files), "configuration_count": len(configs),
+    import unittest
+    import io
+    import shutil
+    import subprocess
+    import os
+    suite = unittest.defaultTestLoader.discover(str(ROOT / "tests"))
+    stream = io.StringIO()
+    tested = unittest.TextTestRunner(stream=stream).run(suite)
+    if not tested.wasSuccessful():
+        raise AssertionError(stream.getvalue())
+    bash = (Path("C:/Program Files/Git/bin/bash.exe") if os.name == "nt" else Path(shutil.which("bash") or "/missing/bash"))
+    shell_files = sorted((ROOT / "scripts/gpu").glob("*.sh"))
+    shell_status = "Pending: Bash unavailable"
+    if bash.is_file():
+        for script in shell_files:
+            subprocess.run([str(bash), "-n", script.as_posix()], capture_output=True, check=True)
+        shell_status = f"PASS: {len(shell_files)} Bash syntax checks; Linux execution remains pending"
+    return {"syntax_files": len(files), "source_sha256": {p.relative_to(ROOT).as_posix(): sha256(p) for p in files},
+            "configuration_count": len(configs), "operational_tests": tested.testsRun,
+            "shell_syntax": shell_status,
             "isolated_fusion_checks": "PASS: exact zero-alpha identity and two-step gradients; no KITTI gate evidence"}
 
 
-CONFIGS = {"A0": "configs/baseline/A0.yaml", "A1": "configs/ablation/A1.yaml",
-           "A2": "configs/ablation/A2.yaml", "A3": "configs/proposed/A3.yaml",
-           "A4": "configs/ablation/A4.yaml"}
-
-
-def run(config, dataset_root, manifest, output, gpu=False, reference_predictions=None, reference_metrics=None):
+def run(config, dataset_root, manifest, output, gpu=False, reference_predictions=None, reference_metrics=None, overrides=None, checkpoint_dir=None):
     from .runner import preparation, components, record_hub
     result = {"static": static_checks(), "sources": check_sources(), "environment": environment(),
               "G1": "BLOCKED", "G2": "BLOCKED", "G3": "BLOCKED", "G4": "BLOCKED", "details": {}}
     try:
-        result["dav2_checkpoint"] = verify_checkpoint("dav2_small")
+        prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
+        result["dav2_checkpoint"] = verify_checkpoint("dav2_small", prior_path)
         from .depth import FrozenDepthPrior
-        prior = FrozenDepthPrior()
+        prior = FrozenDepthPrior(prior_path)
         prior.train(True)
         if prior.training or any(p.requires_grad for p in prior.parameters()):
             raise AssertionError("DA-V2 freeze/eval contract failed")
@@ -75,7 +90,7 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
     try:
         if not manifest:
             raise ValueError("Supply verified --manifest and --dataset-root on the GPU machine")
-        cfg, metadata = preparation(config, dataset_root, manifest)
+        cfg, metadata = preparation(config, dataset_root, manifest, overrides, checkpoint_dir)
         result["identity"] = metadata["identity"]
         result["data"] = metadata["data"]
         result["G1"] = "PASS"
@@ -87,7 +102,7 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
         try:
             from .runner import require_cuda
             require_cuda()
-            model, criterion, optimizer, scheduler, warmup, train_loader, val_loader = components(cfg)
+            model, criterion, optimizer, scheduler, warmup, train_loader, val_loader = components(cfg, checkpoint_dir)
             record_hub(metadata)
             result["initialization_assets"] = {k: metadata[k] for k in ("backbone_cache", "compiled_ops")}
             # G2/G3 use one genuine designated-train sample; full training's
@@ -169,7 +184,7 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
     scheduler.step()
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "resume.pth"
-        save(path, model, optimizer, scheduler, warmup, 1, 0.0, metadata)
+        save(path, model, optimizer, scheduler, warmup, 1, 0.0, metadata, global_step=2)
         saved_scheduler = scheduler.state_dict()
         saved_rng = rng_state()
         expected_loss = step()
@@ -181,8 +196,8 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
         random.random()
         torch.rand(1)
         torch.rand(1, device="cuda")
-        next_epoch, _ = resume(path, model, optimizer, scheduler, warmup, metadata)
-        assert next_epoch == 1
+        next_epoch, _, global_step = resume(path, model, optimizer, scheduler, warmup, metadata)
+        assert next_epoch == 1 and global_step == 2
         assert scheduler.state_dict() == saved_scheduler
         restored_rng = rng_state()
         assert restored_rng["python"] == saved_rng["python"]

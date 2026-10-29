@@ -17,10 +17,13 @@ Both remain unmodified. No remote push has occurred.
 Local laptop: Windows CPU, existing depth_monoia Conda environment; no packages
 were installed/changed. Python 3.9.25, torch 2.8.0 CPU, torchvision 0.23.0 and
 NumPy 2.0.2 are local versions, not upstream CUDA-compatibility evidence.
-`docs/reproducibility/LOCAL_VERIFICATION.json` records the actual consolidated
+`docs/reproducibility/INITIAL_LOCAL_VERIFICATION.json` records the original consolidated
 check and its commit/state at execution.
 The check ran immediately before the implementation commit, while the tested
 source was staged; its dirty flag is preserved as recorded.
+The latest continuation check is recorded separately as LOCAL_VERIFICATION.json.
+The existing project was continued with explicit owner authorization, retaining
+its Git history and prior reports. Current workflow commits are in `git log`.
 
 Prepared GPU stack: Linux, Python 3.9, torch 2.4.1, torchvision 0.19.1, CUDA toolkit
 12.1, NumPy 1.26.4; remaining pins in requirements/linux-cu121.txt. GPU model,
@@ -53,3 +56,14 @@ G1–G4 all remain Pending here. Their evidence must match code/config/data/prio
 identity before full training. Isolated tensor checks are not KITTI evidence.
 No training, benchmark claim, test submission or cloud resource was started.
 Archive actual configs, logs, gates and checkpoint hashes with each real result.
+
+## Operational continuation
+
+GPU_SETUP_GUIDE.md, GPU_TRAINING_GUIDE.md, CHECKPOINT_MANAGEMENT.md,
+ARTIFACT_DOWNLOAD_GUIDE.md and GPU_RECOVERY_GUIDE.md document the implemented CLI
+and wrappers. Local tests use genuine source-file bytes to exercise backup/
+restore, corruption/path rejection and OS locking; they do not create fake model
+checkpoints or KITTI results. Linux deployment/full-state resume still require G2/G3.
+Gates now also record actual backbone cache and imported operator hashes. Training
+rejects changed bytes since verification. Source/data root relocation is allowed
+without weakening content/config identity. Runtime batch/seed changes are explicit.

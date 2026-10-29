@@ -99,7 +99,15 @@ def environment():
             packages[name] = metadata.version(name)
         except metadata.PackageNotFoundError:
             packages[name] = "missing"
-    return {"platform": platform.platform(), "python": platform.python_version(),
+    system_tools = {}
+    if torch.cuda.is_available():
+        for name, command in {"nvidia_driver_inventory": ["nvidia-smi", "--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"],
+                              "cuda_toolkit": ["nvcc", "--version"], "compiler": ["c++", "--version"]}.items():
+            try:
+                system_tools[name] = subprocess.check_output(command, text=True, stderr=subprocess.STDOUT, timeout=10).strip()
+            except (OSError, subprocess.SubprocessError) as error:
+                system_tools[name] = "Unavailable: " + type(error).__name__
+    return {"platform": platform.platform(), "python": platform.python_version(), "system_tools": system_tools,
             "packages": packages, "cuda": torch.version.cuda,
             "cudnn": torch.backends.cudnn.version(),
             "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,

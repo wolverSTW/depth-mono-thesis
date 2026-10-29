@@ -16,7 +16,12 @@ __pycache__/
 data/
 checkpoints/*
 !checkpoints/.gitkeep
-experiments/*/runs/
+experiments/*
+!experiments/README.md
+backups/
+*.tar
+*.tar.gz
+*.zip
 results/*
 !results/.gitkeep
 build/

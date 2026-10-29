@@ -49,3 +49,11 @@ each GPU run. Leaderboard checkpoints are excluded from held-out val evaluation.
 | Differences from published results | Pending comparable real execution |
 
 Exact preparation, training and evaluation commands are in README.md.
+
+## Operational bootstrap update
+
+The original Trainer.train_one_epoch remains in use. External criterion/optimizer
+hooks observe actual loss/global step without replacing optimization code. The
+new run layout uses checkpoints/best.pth and last.pth with complete state; fixed
+settings remain inherited. Official validation-weight evaluation requires A0 G1–G4
+evidence and remains unexecuted.

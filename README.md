@@ -29,7 +29,7 @@ Per level: `F_fused = F_rgb + alpha * sigmoid(G([F_rgb,F_depth]) + W_K E_K) * F_
 RGB features already contain MonoIA's original focal adaptation. Four coefficients
 start at zero for exact baseline initialization; adapters/gates learn after the
 first coefficient update. Relative DA-V2 depth is not metres. See the editable
-[architecture report](docs/reports/ARCHITECTURE.md).
+[architecture report](docs/ARCHITECTURE.md).
 
 | ID | Configuration | New fusion |
 |---|---|---|
@@ -155,21 +155,22 @@ a blocked status to PASS.
 ```bash
 CUDA_VISIBLE_DEVICES=0 python scripts/research.py train \
   --config configs/proposed/A3.yaml --manifest local.dataset.json \
-  --gates results/A3_gates.json --run-dir experiments/A3/runs/seed444
+  --gates results/A3_gates.json --run-dir experiments/A3_intrinsic_fusion/run_001
 
 CUDA_VISIBLE_DEVICES=0 python scripts/research.py train \
   --config configs/proposed/A3.yaml --manifest local.dataset.json \
-  --gates results/A3_gates.json --run-dir experiments/A3/runs/seed444 \
-  --resume experiments/A3/runs/seed444/checkpoint.pth
+  --gates results/A3_gates.json --run-dir experiments/A3_intrinsic_fusion/run_001 \
+  --resume experiments/A3_intrinsic_fusion/run_001/checkpoints/last.pth
 
 CUDA_VISIBLE_DEVICES=0 python scripts/research.py evaluate \
   --config configs/baseline/A0.yaml --manifest local.dataset.json \
   --checkpoint checkpoints/MonoIA_KITTI_Val.pth --official \
+  --gates results/A0_gates.json \
   --run-dir results/official_A0
 
 CUDA_VISIBLE_DEVICES=0 python scripts/research.py evaluate \
   --config configs/proposed/A3.yaml --manifest local.dataset.json \
-  --checkpoint experiments/A3/runs/seed444/checkpoint_best.pth \
+  --checkpoint experiments/A3_intrinsic_fusion/run_001/checkpoints/best.pth \
   --run-dir results/A3_seed444
 ```
 
@@ -194,12 +195,30 @@ single-image latency.
 
 ## Editable reports and limitations
 
-[Status](docs/reports/PROJECT_STATUS.md),
-[baseline reproduction](docs/reports/BASELINE_REPRODUCTION.md),
-[architecture](docs/reports/ARCHITECTURE.md),
-[ablations](docs/reports/ABLATION_STUDY.md),
-[evaluation](docs/reports/EVALUATION_RESULTS.md),
-[reproducibility](docs/reports/REPRODUCIBILITY.md).
+[Status](PROJECT_STATUS.md), [project instructions](AGENTS.md),
+[research plan](docs/RESEARCH_PLAN.md), [milestones](docs/IMPLEMENTATION_PLAN.md),
+[baseline reproduction](reports/BASELINE_REPORT.md),
+[architecture](docs/ARCHITECTURE.md), [experiment protocol](docs/EXPERIMENTS.md),
+[ablations](reports/ABLATION_REPORT.md), [evaluation protocol](docs/EVALUATION_PROTOCOL.md),
+[evaluation report](reports/EVALUATION_REPORT.md),
+[final research report](reports/FINAL_RESEARCH_REPORT.md),
+[reproducibility](docs/REPRODUCIBILITY.md), [GitHub workflow](docs/GITHUB_WORKFLOW.md).
+
+Operational workflow: [GPU setup](docs/GPU_SETUP_GUIDE.md),
+[training/monitoring](docs/GPU_TRAINING_GUIDE.md),
+[checkpoint management](docs/CHECKPOINT_MANAGEMENT.md),
+[backup/download](docs/ARTIFACT_DOWNLOAD_GUIDE.md),
+[recovery](docs/GPU_RECOVERY_GUIDE.md). Thirteen configurable GPU wrappers share
+one CLI implementation. Backups use locks and per-file checksums; restoration
+refuses existing destinations and unsafe archive members. These operational paths
+have local tests; Linux CUDA execution is still pending.
+
+```bash
+python scripts/aggregate_results.py --search-root experiments --output results/model_comparison.csv
+```
+
+Aggregation reads only completed real evaluations, groups differing protocols and
+leaves unavailable measurements blank. It does not import published results.
 
 M1 is complete; M2–M4 implementation is prepared with real-data GPU acceptance
 pending. M5–M6 execution requires Linux CUDA, real KITTI and verified splits.

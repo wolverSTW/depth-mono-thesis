@@ -18,21 +18,24 @@ def restore_rng(state):
     torch.cuda.set_rng_state_all([item.cpu() for item in state["cuda"]])
 
 
-def save(path, model, optimizer, scheduler, warmup, next_epoch, best, metadata):
+def save(path, model, optimizer, scheduler, warmup, next_epoch, best, metadata, global_step=0):
     path = Path(path)
-    state = {"schema": 1, "model_state": model.state_dict(),
+    state = {"schema": 2, "model_state": model.state_dict(), "global_step": global_step,
              "optimizer_state": optimizer.state_dict(), "scheduler": scheduler.state_dict(),
              "warmup": warmup.state_dict() if warmup is not None else None,
              "next_epoch": next_epoch, "best": best, "rng": rng_state(), "metadata": metadata}
     temporary = path.with_suffix(path.suffix + ".tmp")
-    torch.save(state, temporary)
+    with temporary.open("wb") as handle:
+        torch.save(state, handle)
+        handle.flush()
+        os.fsync(handle.fileno())
     os.replace(temporary, path)
 
 
 def resume(path, model, optimizer, scheduler, warmup, expected):
     # Only load trusted locally generated training states (contain NumPy RNG).
     state = torch.load(path, map_location="cpu", weights_only=False)
-    if state.get("schema") != 1 or state["metadata"]["identity"] != expected["identity"]:
+    if state.get("schema") != 2 or state["metadata"]["identity"] != expected["identity"]:
         raise ValueError("Resume configuration/source/data identity mismatch")
     model.load_state_dict(state["model_state"], strict=True)
     optimizer.load_state_dict(state["optimizer_state"])
@@ -40,7 +43,7 @@ def resume(path, model, optimizer, scheduler, warmup, expected):
     if warmup is not None:
         warmup.load_state_dict(state["warmup"])
     restore_rng(state["rng"])
-    return state["next_epoch"], state["best"]
+    return state["next_epoch"], state["best"], state["global_step"]
 
 
 def load_weights(path, model, verified_official=False):

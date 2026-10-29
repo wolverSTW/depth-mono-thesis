@@ -4,6 +4,10 @@ import os
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+CONFIGS = {"A0": "configs/baseline/A0.yaml", "A1": "configs/ablation/A1.yaml",
+           "A2": "configs/ablation/A2.yaml", "A3": "configs/proposed/A3.yaml", "A4": "configs/ablation/A4.yaml"}
+RUN_NAMES = {"A0": "A0_baseline", "A1": "A1_simple_fusion", "A2": "A2_gated_fusion",
+             "A3": "A3_intrinsic_fusion", "A4": "A4_confidence_fusion"}
 
 
 def merge(base, update):
@@ -25,8 +29,31 @@ def load_config(path):
     return cfg
 
 
-def resolve_config(path, dataset_root=None):
+def resolve_config(path, dataset_root=None, overrides=None):
     cfg = load_config(path)
+    changes = deepcopy(cfg["execution"].get("protocol_changes", {}))
+    for key, value in (overrides or {}).items():
+        if value is None:
+            continue
+        if key == "batch_size":
+            if value < 1:
+                raise ValueError("Batch size must be positive")
+            if value != cfg["dataset"]["batch_size"]:
+                changes[key] = {"original": changes.get(key, {}).get("original", cfg["dataset"]["batch_size"]), "resolved": value}
+            cfg["dataset"]["batch_size"] = value
+        elif key == "workers":
+            if value < 0:
+                raise ValueError("Worker count must be nonnegative")
+            cfg["execution"]["workers"] = value
+        elif key == "seed":
+            if not 0 <= value < 65536:
+                raise ValueError("Seed must fit original NumPy seed**2 policy")
+            if value != cfg["random_seed"]:
+                changes[key] = {"original": changes.get(key, {}).get("original", cfg["random_seed"]), "resolved": value}
+            cfg["random_seed"] = value
+        else:
+            raise ValueError("Unsupported runtime override: " + key)
+    cfg["execution"]["protocol_changes"] = changes
     cfg["dataset"]["root_dir"] = str(Path(dataset_root or os.environ.get(
         "KITTI_ROOT", cfg["dataset"]["root_dir"])).resolve())
     cfg["model"]["focal_embedding_path"] = str(ROOT / "MonoIA/focal_list_feat.npy")
