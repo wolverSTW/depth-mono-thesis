@@ -1,0 +1,6 @@
+extends: ../common.yaml
+experiment:
+  id: A4
+  description: Optional flip-consistency prior reliability; execution locked pending A0-A3
+depth:
+  mode: confidence

@@ -1,0 +1,6 @@
+extends: ../common.yaml
+experiment:
+  id: A3
+  description: Frozen DA-V2 plus intrinsic-aware gated fusion
+depth:
+  mode: intrinsic

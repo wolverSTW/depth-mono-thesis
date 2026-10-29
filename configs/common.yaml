@@ -1,0 +1,20 @@
+# Inherit the pinned original config; keep all benchmark-critical settings.
+extends: ../MonoIA/config/monoia.yaml
+dataset:
+  root_dir: data/KITTIDataset
+model:
+  focal_embedding_path: MonoIA/focal_list_feat.npy
+trainer:
+  gpu_ids: '0'
+execution:
+  workers: 4
+  precision: float32
+  devices: 1
+depth:
+  input_size: 518
+  mode: null
+  alpha_init: 0.0
+  frozen: true
+  representation: four_DINO_intermediates_plus_standardized_relative_depth
+  resize: tensor_bicubic_official_lower_bound_multiple14
+  microbatch: 1

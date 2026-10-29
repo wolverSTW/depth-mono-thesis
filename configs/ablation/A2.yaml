@@ -1,0 +1,6 @@
+extends: ../common.yaml
+experiment:
+  id: A2
+  description: Frozen DA-V2 plus gated fusion; original MonoIA intrinsics retained
+depth:
+  mode: gated

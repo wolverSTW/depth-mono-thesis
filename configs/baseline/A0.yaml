@@ -1,0 +1,6 @@
+extends: ../common.yaml
+experiment:
+  id: A0
+  description: Original MonoIA without depth extension
+depth:
+  mode: null

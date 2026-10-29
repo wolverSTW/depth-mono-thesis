@@ -9,6 +9,8 @@ __pycache__/
 *.pt
 *.ckpt
 *.onnx
+*.so
+*.pyd
 *.npy
 *.npz
 data/

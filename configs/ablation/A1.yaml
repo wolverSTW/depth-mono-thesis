@@ -1,0 +1,6 @@
+extends: ../common.yaml
+experiment:
+  id: A1
+  description: Frozen DA-V2 plus simple residual fusion; original MonoIA intrinsics retained
+depth:
+  mode: simple
