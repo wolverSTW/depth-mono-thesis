@@ -9,6 +9,7 @@ pending. M5–M6 operational bootstrap implemented and locally checked. Real GPU
 execution remains blocked by missing data/hardware/reference evidence.
 Branch: `develop`. M1: `c3e7a5691e5155007fe1def666d490ad909331f4`.
 Implementation: `006d83e326d91d5dad996e2158cc18575a11e5b4`.
+Operational bootstrap: `ed871c0d46d84fb122f6fe07ac3c428dd739168c`.
 Exact report/final milestone hashes: `git log --oneline`.
 
 ## Completed

@@ -8,6 +8,9 @@ Branch: `develop`. M1: `c3e7a5691e5155007fe1def666d490ad909331f4`.
 Later milestone hashes: `git log --oneline`. Executed runs save their parent
 commit, branch, dirty state and extension-code hashes.
 Implementation commit: `006d83e326d91d5dad996e2158cc18575a11e5b4`.
+Operational bootstrap commit: `ed871c0d46d84fb122f6fe07ac3c428dd739168c`.
+The latest local verification's Python hashes match this implementation; its
+parent-commit/dirty flag records the real check before milestone commit creation.
 MonoIA: `69d6ee30ca5e44848727387dd44af6d56d62c24f`.
 DA-V2: `a561b849ebae10a6f5ef49e26c83cbbcd36c71bf`.
 Both remain unmodified. No remote push has occurred.
