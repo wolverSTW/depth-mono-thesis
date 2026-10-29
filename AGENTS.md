@@ -12,6 +12,10 @@ execution: docs/GPU_TRAINING_GUIDE.md; protocol: docs/EVALUATION_PROTOCOL.md.
 
 ## Scientific constraints
 
+- Approved split protocol: `kitti_3dop_chen`, documented in
+  docs/KITTI_3DOP_PROTOCOL.md. All A0–A3 share its pinned bytes/membership.
+  This is a published research partition, not an official KITTI train/val split
+  or verified exact original MonoIA split. Preserve this distinction in claims.
 - Use real KITTI only. No dummy training datasets, invented metrics, copied
   published results presented as local evidence, or validation/test label leakage.
 - Preserve pinned submodules, original A0 architecture, intrinsic embeddings,

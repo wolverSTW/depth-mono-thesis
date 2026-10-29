@@ -1,4 +1,5 @@
 {
+  "protocol": "kitti_3dop_chen",
   "official_source": "https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d",
   "authorized_official_downloads": false,
   "authentication": {"cookie_file": null, "netrc_file": null},
@@ -7,9 +8,5 @@
     "calib": {"url": "REQUIRED: authorized official calibration ZIP URL", "download_source": "REQUIRED: public official acquisition provenance, no signed URL or secret", "sha256": null, "sha256_source": null},
     "label_2": {"url": "REQUIRED: authorized official training-label ZIP URL", "download_source": "REQUIRED: public official acquisition provenance, no signed URL or secret", "sha256": null, "sha256_source": null}
   },
-  "split_source": "REQUIRED: immutable author-provided/designated original MonoIA split provenance",
-  "splits": {
-    "train": {"path": null, "url": "REQUIRED: trusted original train.txt HTTPS URL, or set path instead", "count": 3712, "sha256": "REQUIRED", "sha256_source": "REQUIRED: original split hash provenance"},
-    "val": {"path": null, "url": "REQUIRED: trusted original val.txt HTTPS URL, or set path instead", "count": 3769, "sha256": "REQUIRED", "sha256_source": "REQUIRED: original split hash provenance"}
-  }
+  "notes": "Split URLs, counts and SHA-256 are pinned in docs/reproducibility/kitti_3dop_chen.json and loaded automatically. This is the published 3DOP/Chen partition, not a verified exact original MonoIA split. Keep signed official archive URLs and authentication in this ignored local specification only."
 }

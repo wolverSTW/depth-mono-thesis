@@ -8,6 +8,8 @@ from importlib import metadata
 from pathlib import Path
 from .config import ROOT
 
+KITTI_SOURCE = "https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d"
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -49,18 +51,60 @@ def verify_checkpoint(name, path=None):
 
 def split_ids(path):
     ids = Path(path).read_text().splitlines()
-    if not ids or any(not re.fullmatch(r"\d{6}", item) for item in ids):
+    if not ids or any(not re.fullmatch(r"[0-9]{6}", item) for item in ids):
         raise ValueError("Expected nonempty six-digit KITTI split: " + str(path))
     if len(ids) != len(set(ids)):
         raise ValueError("Duplicate split IDs: " + str(path))
     return ids
 
 
+def split_protocol(protocol):
+    if protocol != "kitti_3dop_chen":
+        raise ValueError("Select the explicitly approved kitti_3dop_chen protocol; old/unspecified manifests cannot be silently relabelled")
+    path = ROOT / "docs/reproducibility/kitti_3dop_chen.json"
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    if spec["protocol"] != protocol:
+        raise ValueError("Split protocol definition mismatch")
+    return spec
+
+
+def verify_published_splits(directory, manifest=None):
+    """Validate real split bytes/order against the approved immutable source, no images."""
+    spec = split_protocol("kitti_3dop_chen" if manifest is None else manifest.get("protocol"))
+    if manifest is not None:
+        if manifest.get("split_source") != spec["split_source"]:
+            raise ValueError("Manifest split source is not the pinned published protocol")
+        for split, expected in spec["splits"].items():
+            entry = manifest.get(split, {})
+            if entry.get("count") != expected["count"] or entry.get("sha256") != expected["sha256"]:
+                raise ValueError("Manifest attempts to redefine the published split: " + split)
+    result, all_ids = {}, {}
+    for split, expected in spec["splits"].items():
+        path = Path(directory) / (split + ".txt")
+        actual = sha256(path)
+        if actual != expected["sha256"] or path.stat().st_size != expected["bytes"]:
+            raise ValueError("Published split raw-byte/order SHA-256 mismatch: " + split)
+        ids = split_ids(path)
+        if len(ids) != expected["count"]:
+            raise ValueError("Published split count mismatch: " + split)
+        result[split] = {"count": len(ids), "sha256": actual}
+        all_ids[split] = set(ids)
+    if all_ids["train"] & all_ids["val"]:
+        raise ValueError("Training/validation leakage: overlapping IDs")
+    if all_ids["train"] | all_ids["val"] != {f"{i:06d}" for i in range(7481)}:
+        raise ValueError("Published split does not cover the complete labeled KITTI set")
+    return {"protocol": spec["protocol"], "splits": result, "split_source": spec["split_source"],
+            "split_repository_commit": spec["commit"],
+            "protocol_definition_sha256": sha256(ROOT / "docs/reproducibility/kitti_3dop_chen.json")}
+
+
 def verify_dataset(root, manifest):
     root = Path(root)
     manifest = json.loads(Path(manifest).read_text(encoding="utf-8"))
-    if not manifest.get("split_source") or "REQUIRED" in manifest["split_source"]:
-        raise ValueError("Verified split_source is required")
+    if manifest.get("source") != KITTI_SOURCE:
+        raise ValueError("Dataset manifest must identify authorized official KITTI acquisition")
+    split_protocol(manifest.get("protocol"))
+    published = verify_published_splits(root / "ImageSets", manifest)
     result, all_ids = {}, {}
     content = hashlib.sha256()
     for split in ("train", "val"):
@@ -85,7 +129,7 @@ def verify_dataset(root, manifest):
         raise ValueError("Training/validation leakage: overlapping IDs")
     if all_ids["train"] | all_ids["val"] != {f"{i:06d}" for i in range(7481)}:
         raise ValueError("Final experiments require the complete designated KITTI split")
-    return {"splits": result, "split_source": manifest["split_source"],
+    return {**published,
             "dataset_source": manifest["source"], "annotation_calibration_inventory_sha256": content.hexdigest(),
             "image_verification": "split coverage and byte sizes; image-content authentication remains operator responsibility"}
 

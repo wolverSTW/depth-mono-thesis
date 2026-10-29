@@ -1,0 +1,82 @@
+{
+  "source_repository": "https://github.com/charlesq34/frustum-pointnets",
+  "source_commit": "2ffdd345e1fce4775ecb508d207e0ad465bcca80",
+  "checks": {
+    "counts": "PASS",
+    "format": "PASS",
+    "unique": "PASS",
+    "disjoint": "PASS",
+    "complete_union": "PASS",
+    "raw_bytes_preserved": "PASS",
+    "git_blob_identity": "PASS",
+    "order_preserved": "PASS"
+  },
+  "files": {
+    "train": {
+      "path": "kitti/image_sets/train.txt",
+      "sha256": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb",
+      "git_blob_sha1": "505b1e26668c85104eb1da09d68caede331fbd25",
+      "bytes": 25983,
+      "count": 3712,
+      "line_endings": "LF",
+      "trailing_newline": false,
+      "first_ids": [
+        "000000",
+        "000003",
+        "000007"
+      ],
+      "last_ids": [
+        "007474",
+        "007476",
+        "007479"
+      ]
+    },
+    "val": {
+      "path": "kitti/image_sets/val.txt",
+      "sha256": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86",
+      "git_blob_sha1": "258ca1147742bbf8172311feb7e37e1e1d67e5c9",
+      "bytes": 26382,
+      "count": 3769,
+      "line_endings": "LF",
+      "trailing_newline": false,
+      "first_ids": [
+        "000001",
+        "000002",
+        "000004"
+      ],
+      "last_ids": [
+        "007477",
+        "007478",
+        "007480"
+      ]
+    }
+  },
+  "protocol": "kitti_3dop_chen",
+  "verification_date": "2026-10-29",
+  "cross_check": {
+    "repository": "https://github.com/open-mmlab/OpenPCDet",
+    "commit": "233f849829b6ac19afb8af8837a0246890908755",
+    "directory": "data/kitti/ImageSets",
+    "git_blob_identity": "PASS",
+    "raw_base64_payload_identity": "PASS",
+    "method": "Independent GitHub contents API responses compared with the Frustum PointNets source responses; both files identical"
+  },
+  "local_cached_files": {
+    "protocol": "kitti_3dop_chen",
+    "splits": {
+      "train": {
+        "count": 3712,
+        "sha256": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb"
+      },
+      "val": {
+        "count": 3769,
+        "sha256": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86"
+      }
+    },
+    "split_source": "https://github.com/charlesq34/frustum-pointnets/tree/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets",
+    "split_repository_commit": "2ffdd345e1fce4775ecb508d207e0ad465bcca80",
+    "protocol_definition_sha256": "9647a7c10188a0a322b0d0474090a245c0f9bc1d36a602049b81df59e40a457e"
+  },
+  "baseline_settings_comparison": "PASS: resolved common config identical to HEAD after removing only the new dataset.protocol field",
+  "scope": "Split-source and file-byte checks only; not real KITTI dataset/G1 or GPU/training/evaluation evidence"
+}

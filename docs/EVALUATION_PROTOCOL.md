@@ -1,5 +1,9 @@
 # Evaluation protocol
 
+Validation uses the pinned `kitti_3dop_chen` 3769-frame list; see
+[split provenance](KITTI_3DOP_PROTOCOL.md). Independent G4 reference inputs must
+match its SHA-256. Exact original MonoIA split/checkpoint overlap is unverified.
+
 On the approved RTX 4090 environment, `bash scripts/vast/evaluate_all.sh` activates
 the pinned environment and delegates to research.py using each actual trained
 run's saved configuration/checkpoint. It then exports model_comparison.csv.

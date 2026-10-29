@@ -1,8 +1,9 @@
 {
   "dataset": "KITTI 3D Object Detection",
+  "protocol": "kitti_3dop_chen",
   "source": "https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d",
-  "split_source": "REQUIRED: immutable source URL or author-provided archive reference",
-  "train": {"count": 3712, "sha256": "REQUIRED"},
-  "val": {"count": 3769, "sha256": "REQUIRED"},
-  "notes": "Counts describe the intended common split, not a verified local dataset. Populate hashes from independently verified original split files. Do not generate a new random split."
+  "split_source": "https://github.com/charlesq34/frustum-pointnets/tree/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets",
+  "train": {"count": 3712, "sha256": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb"},
+  "val": {"count": 3769, "sha256": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86"},
+  "notes": "Example only, not G1 evidence. prepare_kitti.sh generates a manifest with actual archive receipts after checking real files. Published 3DOP/Chen research split; exact original MonoIA membership remains unverified."
 }

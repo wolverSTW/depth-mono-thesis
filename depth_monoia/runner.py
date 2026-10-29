@@ -33,6 +33,8 @@ def preparation(config, dataset_root, manifest, overrides=None, checkpoint_dir=N
     cfg = resolve_config(config, dataset_root, overrides)
     sources = check_sources()
     data = verify_dataset(cfg["dataset"]["root_dir"], manifest)
+    if cfg["dataset"].get("protocol") != data["protocol"]:
+        raise ValueError("Configuration and dataset manifest split protocol differ")
     prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
     prior = verify_checkpoint("dav2_small", prior_path) if cfg["experiment"]["id"] != "A0" else None
     code = {p.relative_to(ROOT).as_posix(): sha256(p) for folder in ("depth_monoia", "scripts") for p in sorted((ROOT / folder).rglob("*.py"))}
@@ -42,7 +44,8 @@ def preparation(config, dataset_root, manifest, overrides=None, checkpoint_dir=N
     canonical["config"]["dataset"]["root_dir"] = "<KITTI_ROOT>"
     canonical["config"]["model"]["focal_embedding_path"] = "<PINNED_MONOIA_EMBEDDINGS>"
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
-    protocol = {"per_device_batch_size": cfg["dataset"]["batch_size"],
+    protocol = {"dataset_protocol": data["protocol"],
+                "per_device_batch_size": cfg["dataset"]["batch_size"],
                 "devices": cfg["execution"]["devices"], "gradient_accumulation_steps": 1,
                 "effective_batch_size": cfg["dataset"]["batch_size"] * cfg["execution"]["devices"],
                 "precision": cfg["execution"]["precision"], "seed": cfg["random_seed"],

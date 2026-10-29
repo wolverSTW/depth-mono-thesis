@@ -1,6 +1,7 @@
 # Inherit the pinned original config; keep all benchmark-critical settings.
 extends: ../MonoIA/config/monoia.yaml
 dataset:
+  protocol: kitti_3dop_chen
   root_dir: data/KITTIDataset
 model:
   focal_embedding_path: MonoIA/focal_list_feat.npy

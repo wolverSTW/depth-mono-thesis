@@ -4,9 +4,11 @@ Prepared 2026-10-29. Vast.ai is the exclusive training provider. These commands
 have been inspected locally, **not executed on a GPU**. Do not rent an instance
 or execute paid GPU work until the owner approves it. Continue the existing
 `develop` project; do not initialize another project or change the pinned sources.
-Current reference: `4cf0f97b954e89cefc023d589e465c8e4467e328`. The new task wrappers
-are uncommitted pending owner review; they must be reviewed/committed and then
-published with approval or transferred with history before full training.
+Task wrappers are committed at `50eac764a015e696f3deba3efe563470e42407f7`.
+The published-split/F3 updates are local pending human review; review/commit and
+publish with approval or transfer that exact revision with history before use.
+Approved split: [kitti_3dop_chen](KITTI_3DOP_PROTOCOL.md), not a verified exact
+original MonoIA split or an official KITTI train/validation partition.
 
 ## 1. Before paying
 
@@ -18,11 +20,11 @@ Have these inputs ready off the GPU machine:
   [KITTI account/download page](https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d).
   No URLs are guessed and no login is bypassed. LiDAR, stereo/right RGB, raw KITTI
   and temporal images are unnecessary.
-- Original designated `train.txt` and `val.txt`, their independently checked
-  provenance and SHA-256 hashes. Intended counts are 3712/3769, disjoint and
-  covering all 7481 labeled images. The pinned MonoIA repository does not supply
-  these files. Do not generate a random split or assume arbitrary online lists
-  reproduce the original protocol. Keep their original bytes/line endings.
+- The approved `kitti_3dop_chen` split is now verified: immutable source and
+  SHA-256 pins are in docs/reproducibility/kitti_3dop_chen.json. Preparation
+  fetches it automatically without KITTI credentials, preserving bytes/order.
+  Counts are 3712/3769, disjoint and covering all 7481 labeled frames. Exact
+  original MonoIA split equivalence remains unverified; do not substitute lists.
 - `local.kitti_sources.json`, copied from `configs/vast/kitti_sources.example.json`
   and populated as in step 5. Dataset preparation generates the existing dataset
   manifest only after verifying actual data and splits.
@@ -34,9 +36,9 @@ Have these inputs ready off the GPU machine:
   `Car_bev_easy_R40`, `Car_bev_moderate_R40`, `Car_bev_hard_R40`.
   Use Car IoU 0.7. Published scores or results from this same evaluator alone
   are not independent reference evidence. This missing input currently blocks G4.
-- The reviewed/committed new task-wrapper changes available on GitHub **after
+- The reviewed/committed published-split/F3 changes available on GitHub **after
   separate push approval**, or a Git bundle containing them. The current reference
-  commit alone does not contain `scripts/vast/`.
+  commit alone does not contain the new protocol or recovery fix.
 - A Windows SSH client/key, sufficient off-host backup space (plan 100 GB free,
   more if retaining many full snapshots), and a reviewed rental budget.
 
@@ -216,19 +218,25 @@ Fill these fields before the final command:
 - Archive `sha256`/`sha256_source` are optional when a trusted expected hash is
   available; if supplied it must match. Otherwise source trust relies on the
   operator-authorized official HTTPS download. SHA-256 is computed and ZIP CRC
-  verified **before extraction**, then a verification receipt is saved. A recorded
+  verified **before final archive publication**, with a staged verification
+  receipt for interruption recovery. A recorded
   hash alone is not independent source authentication. No nonexistent published
   official archive checksum is required.
-- Both original splits require a trusted expected SHA-256 and its provenance,
-  count 3712/3769, and an immutable trusted `url` or a local `path`. Set
-  `split_source` to evidence these are the original designated MonoIA lists.
-  Hashing an arbitrary list does not establish original-protocol provenance.
-  These split inputs remain missing here; no random split is substituted.
+- Keep `protocol: kitti_3dop_chen`. The verified split URLs, expected hashes and
+  counts load from the pinned protocol JSON; no manual split URL/hash input is
+  needed. Optional local `splits.train.path` / `splits.val.path` must match the
+  same raw bytes. Source/count/hash overrides fail; old manifests must be
+  preserved and regenerated, never relabelled. See KITTI_3DOP_PROTOCOL.md.
 
 curl uses retries and `.part` range resume where supported. Renew expired signed
 URLs in the ignored JSON. Unsupported range resume fails clearly; inspect/preserve
 partial files before manually restarting a download. Cached archives reuse a
 matching expected hash or previous verified receipt and are not downloaded again.
+Pending receipts recover matching staged/final archives without retransfer after
+publication interruptions. Unknown old final ZIPs without a receipt/trusted hash
+are refused; preserve/quarantine them instead of inventing receipts. A complete
+unjournaled `.part` that the server cannot resume also needs preservation and an
+explicit fresh transfer. No unknown cache is trusted merely because it exists.
 Existing matching extracted files are retained; conflicting files are not overwritten.
 CRC, unsafe ZIP paths/links and disk capacity are checked. Individual files publish
 atomically; the existing artifact lock serializes preparation.
@@ -281,8 +289,8 @@ original unless separately reviewed; no silent LR scaling, accumulation, seed or
 precision change. Metadata records batch/effective batch/optimizer/scheduler/seed/
 precision and protocol_changes. Compare equal comparison_group hashes.
 A genuine DataLoader shared-memory failure can use explicit `--workers 0` or
-`VAST_WORKERS=0`; do not add speculative overrides. Missing split provenance and
-independent G4 inputs still block both original and reduced-batch training.
+`VAST_WORKERS=0`; do not add speculative overrides. Official dataset acquisition
+and independent G4 inputs still block both original- and reduced-batch training.
 
 ## 7. One task command per experiment
 
@@ -545,14 +553,14 @@ after a successful recovery.
 ## Audit outcome and approval boundary
 
 Implemented: seven task entry points reusing the existing runner, authenticated
-official-source acquisition with safe cached reruns, original-split verification,
+official-source acquisition with recoverable publication, published-split verification,
 manifest generation, independent A0–A3 outputs and explicit-batch/OOM reporting.
 Existing full-state resume, real evaluation/export and verified off-server
 backup/restore remain in use. No model architecture was replaced.
 
-Remaining external requirements: official download authorization/URLs; trusted
-original split provenance/hashes; independent G4 reference evidence; reviewed and
-committed wrapper changes available with history; and approval of a paid RTX 4090
+Remaining external requirements: official download authorization/URLs;
+independent G4 reference evidence for the pinned validation list; reviewed and
+committed protocol/F3 changes available with history; and approval of a paid RTX 4090
 offer. Archive expected hashes are optional when unavailable; authenticated
 official acquisition plus CRC/recorded hashes is explicitly distinguished from
 independent source authentication. Linux build, real dataset download, G1–G4 and

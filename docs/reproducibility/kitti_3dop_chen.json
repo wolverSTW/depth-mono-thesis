@@ -1,0 +1,41 @@
+{
+  "protocol": "kitti_3dop_chen",
+  "description": "Published 3DOP/Chen research train/validation partition, distributed by Frustum PointNets; not an official KITTI train/val split or verified exact original MonoIA split.",
+  "repository": "https://github.com/charlesq34/frustum-pointnets",
+  "commit": "2ffdd345e1fce4775ecb508d207e0ad465bcca80",
+  "split_source": "https://github.com/charlesq34/frustum-pointnets/tree/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets",
+  "citation": "Xiaozhi Chen, Kaustav Kundu, Yukun Zhu, Andrew G. Berneshawi, Huimin Ma, Sanja Fidler, Raquel Urtasun. 3D Object Proposals for Accurate Object Class Detection. NIPS 2015, pp. 424-432.",
+  "evidence": [
+    "https://papers.neurips.cc/paper_files/paper/2015/hash/6da37dd3139aa4d9aa55b8d237ec5d4a-Abstract.html",
+    "https://arxiv.org/pdf/1711.08488v2",
+    "https://arxiv.org/pdf/1611.07759v3",
+    "https://github.com/charlesq34/frustum-pointnets/blob/2ffdd345e1fce4775ecb508d207e0ad465bcca80/README.md",
+    "https://github.com/xingyizhou/CenterNet/blob/4c50fd3a46bdf63dbf2082c5cbb3458d39579e6c/readme/DATA.md"
+  ],
+  "cross_check": {
+    "repository": "https://github.com/open-mmlab/OpenPCDet",
+    "commit": "233f849829b6ac19afb8af8837a0246890908755",
+    "directory": "data/kitti/ImageSets",
+    "result": "Both Git blob identities and base64-decoded raw contents match the selected Frustum PointNets files exactly."
+  },
+  "splits": {
+    "train": {
+      "path": "kitti/image_sets/train.txt",
+      "url": "https://raw.githubusercontent.com/charlesq34/frustum-pointnets/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets/train.txt",
+      "count": 3712,
+      "bytes": 25983,
+      "sha256": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb",
+      "git_blob_sha1": "505b1e26668c85104eb1da09d68caede331fbd25",
+      "sha256_source": "Computed from unmodified base64-decoded GitHub blob bytes at the pinned revision; Git blob SHA-1 independently matched OpenPCDet."
+    },
+    "val": {
+      "path": "kitti/image_sets/val.txt",
+      "url": "https://raw.githubusercontent.com/charlesq34/frustum-pointnets/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets/val.txt",
+      "count": 3769,
+      "bytes": 26382,
+      "sha256": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86",
+      "git_blob_sha1": "258ca1147742bbf8172311feb7e37e1e1d67e5c9",
+      "sha256_source": "Computed from unmodified base64-decoded GitHub blob bytes at the pinned revision; Git blob SHA-1 independently matched OpenPCDet."
+    }
+  }
+}

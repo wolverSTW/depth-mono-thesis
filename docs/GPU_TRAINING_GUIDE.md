@@ -1,5 +1,9 @@
 # Full training, monitoring and evaluation
 
+All A0–A3 use the verified published `kitti_3dop_chen` research partition;
+[source, hashes and scope](KITTI_3DOP_PROTOCOL.md). This does not establish exact
+original MonoIA split equivalence. Architecture and training settings are preserved.
+
 Vast.ai is the exclusive GPU provider. The [single Vast.ai runbook](VAST_AI_RUNBOOK.md)
 gives exact A0/A1/A2/A3 commands, the configured-batch G2/G3 capacity check,
 evaluation paths and Windows backup/replacement-instance recovery commands.

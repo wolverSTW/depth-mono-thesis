@@ -1,5 +1,9 @@
 # Experiment protocol
 
+Approved membership: `kitti_3dop_chen`, common to A0–A3 through configs/common.yaml.
+See [published split evidence](KITTI_3DOP_PROTOCOL.md). Describe comparisons as
+using the published research protocol; exact original MonoIA split is unverified.
+
 | ID | Configuration | Added fusion | Execution |
 |---|---|---|---|
 | A0 | configs/baseline/A0.yaml | None | Prepared |

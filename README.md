@@ -56,8 +56,8 @@ after reviewing/committing and transferring these changes:
 
 ```bash
 bash scripts/vast/setup.sh
-# Fill ignored local.kitti_sources.json with authorized official URLs and trusted
-# original split hashes/provenance; supply the independent G4 reference inputs.
+# Fill ignored local.kitti_sources.json with authorized official archive URLs.
+# kitti_3dop_chen split pins load automatically; supply independent G4 inputs.
 bash scripts/vast/prepare_kitti.sh
 bash scripts/vast/train_a0.sh --verify-only
 bash scripts/vast/train_a3.sh --verify-only
@@ -74,7 +74,9 @@ uses its existing configuration and creates a unique run. Batch 16 remains the
 default; 24 GB fit is **unverified**. OOM stops without batch/AMP fallback.
 Explicit `--batch-size N` is a recorded protocol deviation; apply the same
 reviewed batch to all comparisons. `--resume RUN_DIRECTORY` uses full-state resume.
-The original split provenance and independent evaluator evidence are still missing.
+The published [3DOP/Chen split](docs/KITTI_3DOP_PROTOCOL.md) is verified and pinned.
+Official archive access and independent evaluator evidence remain missing.
+Exact original MonoIA split equivalence remains unverified.
 
 `MonoIA/` and `third_party/Depth-Anything-V2/` are unmodified Git submodules.
 The extension package is `depth_monoia/`. Local branch: `develop`.
@@ -130,13 +132,13 @@ Keep all dataset files outside Git:
   training/calib/000000.txt ...
 ```
 
-The pinned MonoIA repository omits its split files. Obtain the designated original
-split from an immutable source; do not generate a new random split. Intended
-common counts 3712/3769 are not verified locally. Copy
-`docs/reproducibility/dataset.example.json` to `local.dataset.json`; replace the
-split source, counts and hashes with independently verified information.
-`sha256sum /datasets/KITTIDataset/ImageSets/{train,val}.txt` computes hashes but
-does not by itself establish provenance. G1 checks complete coverage of 7481
+The approved `kitti_3dop_chen` research split is pinned to the authors' Frustum
+PointNets release with verified raw hashes, 3712/3769 unique/disjoint IDs and
+complete coverage. See [source evidence](docs/KITTI_3DOP_PROTOCOL.md). It is not an
+official KITTI train/val split or a verified exact original MonoIA split.
+`scripts/vast/prepare_kitti.sh` obtains these lists automatically and generates
+the dataset manifest after actual authorized official-archive acquisition.
+G1 checks pinned bytes/order, protocol identity and complete coverage of 7481
 images, disjoint splits, duplicate IDs, counts/hashes and annotation/calibration
 inventory. Dataset image authenticity relies on trusted acquisition; image bytes
 are not rehashed in full. No validation labels enter training.

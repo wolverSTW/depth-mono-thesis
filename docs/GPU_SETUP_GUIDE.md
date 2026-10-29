@@ -6,7 +6,7 @@ template/digest, hardware estimates, exact SSH/data/setup commands and recovery.
 The material below preserves the existing stack/provenance explanations.
 
 Current target is a full **RTX 4090 24 GB**, not the previous A100 planning target.
-Use `bash scripts/vast/setup.sh`, then configure authorized official URLs/splits
+Use `bash scripts/vast/setup.sh`, then configure authorized official archive URLs
 in ignored local.kitti_sources.json and run `bash scripts/vast/prepare_kitti.sh`.
 These tasks never train. The runbook documents server-side downloads, optional
 cookie/netrc authentication, resumable cached acquisition and manifest generation.
@@ -90,10 +90,12 @@ bash scripts/gpu/download_pretrained.sh --name monoia_val --checkpoint-dir "$CHE
 bash scripts/gpu/prepare_dataset.sh --dataset-root "$KITTI_ROOT" --manifest local.dataset.json
 ```
 
-KITTI requires licensed official image_2/label_2/calib files and original designated
-ImageSets/train.txt and val.txt. Populate local.dataset.json from the documented
-example with independently verified split hashes/source/counts. No script invents
-splits, downloads labels without authorization, or rewrites calibration.
+KITTI requires authorized official image_2/label_2/calib files and the approved
+published `kitti_3dop_chen` ImageSets/train.txt and val.txt. The Vast preparation
+task downloads immutable split files with verified hashes automatically and
+generates local.dataset.json only after checking real data. See
+[split evidence and recovery](KITTI_3DOP_PROTOCOL.md). Exact original MonoIA split
+equivalence is unverified. No labels are converted or calibration rewritten.
 
 For each A0–A3, run the four gates, using independently executed real reference
 KITTI predictions/metrics:

@@ -14,7 +14,8 @@ parent-commit/dirty flag records the real check before milestone commit creation
 MonoIA: `69d6ee30ca5e44848727387dd44af6d56d62c24f`.
 DA-V2: `a561b849ebae10a6f5ef49e26c83cbbcd36c71bf`.
 Both remain unmodified. Bootstrap 89c6b99 was pushed with owner approval; Vast
-preparation 4cf0f97 remains local. RTX 4090 task changes are uncommitted for review.
+preparation 4cf0f97 remains local. RTX 4090 tasks reached 50eac764; published-split
+and F3 updates remain uncommitted for human review.
 
 ## Software and hardware
 
@@ -39,15 +40,22 @@ record actual peaks and explicit OOM; no automatic batch/precision fallback.
 
 ## Data and checkpoints
 
-KITTI data and designated split provenance: Pending. Fill local.dataset.json from
-the example using real data and original split evidence. Validation labels never
+KITTI data acquisition: Pending. The owner-approved `kitti_3dop_chen` published
+split source, raw hashes and all 7481 IDs are verified; see KITTI_3DOP_PROTOCOL.md
+and reproducibility/kitti_3dop_chen.json. Exact original MonoIA split equivalence
+remains unverified. Preparation generates local.dataset.json only after actual
+official acquisition and complete dataset checks. Validation labels never
 enter training. Identity includes split hashes, annotation/calibration inventory,
 config, upstream/code hashes and prior checkpoint hash. Full image authentication
 relies on trusted acquisition; images receive coverage/size checks.
 The new scripts/vast/prepare_kitti.sh generates this same manifest from real
-official-server downloads and verified original splits. Archive receipts record
+official-server downloads and verified pinned published splits. Archive receipts record
 SHA-256/CRC and distinguish expected-hash verification from a recorded hash of an
 authorized HTTPS download. Signed URLs/cookies/netrc credentials are excluded.
+Verified staged receipts precede no-clobber final archive publication and recover
+matching staged/final bytes on rerun. Unknown caches and identity conflicts fail.
+Protocol ID and definition hash participate in run/gate identity; old gates and
+checkpoints cannot silently become evidence for a different split protocol.
 
 DA-V2 Small official bytes match SHA-256
 `715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378`.
