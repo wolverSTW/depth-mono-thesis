@@ -8,6 +8,15 @@ KITTI/pretrained/reference inputs are required for replacement-instance recovery
 
 Recovery is prepared, not tested on a GPU. No live trained run is available here.
 
+The current target is RTX 4090 24 GB. On the replacement approved server, use
+`bash scripts/vast/setup.sh` and `bash scripts/vast/prepare_kitti.sh` with the same
+original split/archive content. Restore the existing verified off-host snapshot
+as below, supply the same independent reference inputs, then run
+`bash scripts/vast/train_a3.sh --resume /actual/restored/run/directory`.
+The wrapper activates Conda, runs fresh matching G1–G4 at the saved batch and
+resumes last.pth. If a VAST_BATCH_SIZE environment override conflicts with the
+saved run, remove that override; never alter run hashes to bypass failure.
+
 1. Obtain an authorized Linux machine with the documented CUDA/toolchain stack.
    Restore source at the recorded commit, including pinned submodules. Verify
    `git status`, `git rev-parse HEAD` and `git submodule status`. Do not assume the

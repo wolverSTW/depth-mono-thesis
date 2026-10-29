@@ -42,7 +42,13 @@ def preparation(config, dataset_root, manifest, overrides=None, checkpoint_dir=N
     canonical["config"]["dataset"]["root_dir"] = "<KITTI_ROOT>"
     canonical["config"]["model"]["focal_embedding_path"] = "<PINNED_MONOIA_EMBEDDINGS>"
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
-    return cfg, {"identity": digest, **identity, "environment": environment()}
+    protocol = {"per_device_batch_size": cfg["dataset"]["batch_size"],
+                "devices": cfg["execution"]["devices"], "gradient_accumulation_steps": 1,
+                "effective_batch_size": cfg["dataset"]["batch_size"] * cfg["execution"]["devices"],
+                "precision": cfg["execution"]["precision"], "seed": cfg["random_seed"],
+                "optimizer": cfg["optimizer"], "scheduler": cfg["lr_scheduler"],
+                "protocol_changes": cfg["execution"].get("protocol_changes", {})}
+    return cfg, {"identity": digest, **identity, "training_protocol": protocol, "environment": environment()}
 
 
 def components(cfg, checkpoint_dir=None):

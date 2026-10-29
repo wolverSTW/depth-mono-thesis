@@ -1,0 +1,72 @@
+{
+  "static": {
+    "syntax_files": 19,
+    "source_sha256": {
+      "depth_monoia/artifacts.py": "fd87f1dc739d59560e475163aa790fe82bd0e41cfe684239e4529a6894b6a783",
+      "depth_monoia/checkpoint.py": "489e681692f4888172c176cedaeeb819905e736ad8743324d385322732df1f7f",
+      "depth_monoia/config.py": "9a3b2bcdafae8fc0fbf7232c0c89a8c0287dc149b8149364416fb8294aae1ab3",
+      "depth_monoia/depth.py": "5efe28ab893c0b69849c6b453cf449080fe3f4976b6b4cf63dda655e47562c29",
+      "depth_monoia/evaluation.py": "3b54cb2e4474796fc6a61b61bbce0c8d3191236836d2e108bfd81fb812da0268",
+      "depth_monoia/events.py": "ab89b0c45afce3c722b8720be425722150ab2cfc7b34701413e5a0a60843e2ca",
+      "depth_monoia/fusion.py": "f5137a0173f6f4afdc5640c7a68f1106373ba76fb8d59a046925d40d1f20080a",
+      "depth_monoia/kitti_download.py": "c530c04aad561af4244c8f6b41774687b044819f98c27500573c59e3fc1ce8d2",
+      "depth_monoia/model.py": "334fbf1e19a77ec65b6373e16108b0e88521baa5507714ac15ba844536f7e4a5",
+      "depth_monoia/provenance.py": "980e5cdc7d4bdb8c0dfcc6cf6e9e760d4e212747a491fc16c53e647c1a49f194",
+      "depth_monoia/reporting.py": "6d2adbc71ae292b6ece3d8a21bf9240f079fd6a9b80207742aa43ff2363121e8",
+      "depth_monoia/runner.py": "e60262ac6a699863d46370ad572509564ffc16104bb9bfcf2abaaffc2b3297ca",
+      "depth_monoia/verification.py": "042ca635e7657ce9db8b9ba571d8d8ecdf7637138c763f0c81da32314cdd533c",
+      "depth_monoia/__init__.py": "a5094756f466539d3c90216139553d1ac31ba2c74a16ba6c418d7f961f33020b",
+      "scripts/aggregate_results.py": "67f263bff4ba640cc12166aa318fc25cbc2dd65cf68daefe3b109620efbe35bc",
+      "scripts/build_ops.py": "b1dc3420fa345db8d74c4e72c850f4303170208ea60c2c03d05264711fe96062",
+      "scripts/research.py": "e4f5eadddc8e199bbbb9f049cc92c40a5b0c5acda7311ef58be9749ef1f12101",
+      "tests/test_kitti_download.py": "3fa8d51f046279031a5ccbbf44b0e28332a92d0c8b31a469ab6e655baf387f90",
+      "tests/test_operations.py": "20bd8e2eb5c3ff82473e03b519e34d78ca82528f33835a5009d736e36e9805eb"
+    },
+    "configuration_count": 5,
+    "operational_tests": 13,
+    "shell_syntax": "PASS: 23 Bash syntax checks; Linux execution remains pending",
+    "isolated_fusion_checks": "PASS: exact zero-alpha identity and two-step gradients; no KITTI gate evidence",
+    "official_depth_load": "PASS: strict official checkpoint load, all weights frozen, eval mode retained"
+  },
+  "sources": {
+    "MonoIA": "69d6ee30ca5e44848727387dd44af6d56d62c24f",
+    "third_party/Depth-Anything-V2": "a561b849ebae10a6f5ef49e26c83cbbcd36c71bf"
+  },
+  "environment": {
+    "platform": "Windows-10-10.0.18363-SP0",
+    "python": "3.9.25",
+    "system_tools": {},
+    "packages": {
+      "torch": "2.8.0",
+      "torchvision": "0.23.0",
+      "numpy": "2.0.2",
+      "scipy": "1.13.1",
+      "Pillow": "11.3.0",
+      "PyYAML": "6.0.3",
+      "opencv-python": "5.0.0.93",
+      "scikit-image": "0.24.0",
+      "scikit-learn": "1.6.1",
+      "numba": "0.60.0",
+      "llvmlite": "0.43.0"
+    },
+    "cuda": null,
+    "cudnn": null,
+    "gpu": null,
+    "git_commit": "4cf0f97b954e89cefc023d589e465c8e4467e328",
+    "branch": "develop",
+    "dirty": true
+  },
+  "G1": "BLOCKED",
+  "G2": "BLOCKED",
+  "G3": "BLOCKED",
+  "G4": "BLOCKED",
+  "details": {
+    "G1": "Supply verified --manifest and --dataset-root on the GPU machine",
+    "G2_G3_G4": "Pending: Linux CUDA, real KITTI and reference evaluation evidence"
+  },
+  "dav2_checkpoint": {
+    "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/03876f8651c73a60fe4c2c48294e09fcb6838fcf/depth_anything_v2_vits.pth",
+    "sha256": "715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378",
+    "bytes": 99218434
+  }
+}

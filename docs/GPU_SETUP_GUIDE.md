@@ -5,6 +5,14 @@ Vast.ai is now the exclusive GPU training provider. Follow the single
 template/digest, hardware estimates, exact SSH/data/setup commands and recovery.
 The material below preserves the existing stack/provenance explanations.
 
+Current target is a full **RTX 4090 24 GB**, not the previous A100 planning target.
+Use `bash scripts/vast/setup.sh`, then configure authorized official URLs/splits
+in ignored local.kitti_sources.json and run `bash scripts/vast/prepare_kitti.sh`.
+These tasks never train. The runbook documents server-side downloads, optional
+cookie/netrc authentication, resumable cached acquisition and manifest generation.
+Use a CUDA 12.1 developer image; its base Python is replaced by the pinned Conda
+environment. No claim is made that batch 16 fits 24 GB.
+
 Status: prepared commands; no GPU instance was created or GPU command executed here.
 Never rent paid resources without owner approval. Scripts configure an existing
 authorized machine; they do not purchase/provision one.
@@ -105,8 +113,8 @@ G1–G4. See GPU_TRAINING_GUIDE.md for training, monitoring, checkpoints and eva
 ## Vast.ai boundaries
 
 Use the exact custom SSH template and ephemeral `/workspace/depth-monoia` layout
-in VAST_AI_RUNBOOK.md. Its A100 80 GB and 300 GB disk recommendations are planning
-allowances, not measured guarantees. Use verified off-host archives; a host-local
+in VAST_AI_RUNBOOK.md. RTX 4090 24 GB is the requested target; the 300 GB disk
+budget and batch capacity remain unmeasured. Use verified off-host archives; a host-local
 volume does not provide replacement-host recovery. Other GPU providers are outside
 the authorized project scope.
 

@@ -1,5 +1,14 @@
 # Evaluation protocol
 
+On the approved RTX 4090 environment, `bash scripts/vast/evaluate_all.sh` activates
+the pinned environment and delegates to research.py using each actual trained
+run's saved configuration/checkpoint. It then exports model_comparison.csv.
+No training is started. Existing final output directories are refused to preserve
+evidence; choose a new output via the lower-level CLI for deliberate reruns.
+GPU synchronization, 5 warmups/20 repeated-real-batch latency measurements and
+parameter counts retain the methodology below. Full GFLOPs remains null when
+custom-op coverage is unvalidated; any partial profiler number is labeled partial.
+
 Primary metrics use pinned upstream KITTI-compatible evaluation: Car, IoU 0.7
 for 3D and BEV, AP_R40 Easy/Moderate/Hard, original difficulty/DontCare behavior,
 topk 50, original 0.2 filter and two-decimal prediction serialization. Predictions

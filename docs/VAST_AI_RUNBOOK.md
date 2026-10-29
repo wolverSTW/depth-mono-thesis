@@ -1,24 +1,31 @@
-# Vast.ai: full KITTI deployment runbook
+# Vast.ai RTX 4090: full KITTI deployment runbook
 
 Prepared 2026-10-29. Vast.ai is the exclusive training provider. These commands
 have been inspected locally, **not executed on a GPU**. Do not rent an instance
 or execute paid GPU work until the owner approves it. Continue the existing
 `develop` project; do not initialize another project or change the pinned sources.
+Current reference: `4cf0f97b954e89cefc023d589e465c8e4467e328`. The new task wrappers
+are uncommitted pending owner review; they must be reviewed/committed and then
+published with approval or transferred with history before full training.
 
 ## 1. Before paying
 
 Have these inputs ready off the GPU machine:
 
-- Official KITTI object-detection left RGB, calibration and training-label ZIPs.
-  Obtain them through the [KITTI account/download page](https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d).
-  LiDAR, stereo/right RGB, raw KITTI and temporal images are unnecessary.
+- Authorized official download URLs for KITTI object-detection left RGB,
+  calibration and training labels. The GPU server downloads these directly;
+  Windows dataset upload is not required. Obtain links/authentication through the
+  [KITTI account/download page](https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d).
+  No URLs are guessed and no login is bypassed. LiDAR, stereo/right RGB, raw KITTI
+  and temporal images are unnecessary.
 - Original designated `train.txt` and `val.txt`, their independently checked
   provenance and SHA-256 hashes. Intended counts are 3712/3769, disjoint and
   covering all 7481 labeled images. The pinned MonoIA repository does not supply
   these files. Do not generate a random split or assume arbitrary online lists
   reproduce the original protocol. Keep their original bytes/line endings.
-- `local.dataset.json`, populated from `docs/reproducibility/dataset.example.json`:
-  replace REQUIRED fields with the actual trusted split source and hashes.
+- `local.kitti_sources.json`, copied from `configs/vast/kitti_sources.example.json`
+  and populated as in step 5. Dataset preparation generates the existing dataset
+  manifest only after verifying actual data and splits.
 - Real validation predictions in KITTI text format and independent KITTI-compatible
   R40 reference measurements for those exact predictions and split. Name them
   `val_predictions/` and `val_reference.json`. The latter must contain
@@ -27,35 +34,35 @@ Have these inputs ready off the GPU machine:
   `Car_bev_easy_R40`, `Car_bev_moderate_R40`, `Car_bev_hard_R40`.
   Use Car IoU 0.7. Published scores or results from this same evaluator alone
   are not independent reference evidence. This missing input currently blocks G4.
-- This preparation commit available on GitHub **after separate push approval**,
-  or a Git bundle containing it. `89c6b99` is the preceding bootstrap commit;
-  it does not contain the configured-batch capacity gate in this runbook.
+- The reviewed/committed new task-wrapper changes available on GitHub **after
+  separate push approval**, or a Git bundle containing them. The current reference
+  commit alone does not contain `scripts/vast/`.
 - A Windows SSH client/key, sufficient off-host backup space (plan 100 GB free,
   more if retaining many full snapshots), and a reviewed rental budget.
 
-No GPU is needed to acquire these inputs. A full training run requires all four
+No GPU is needed to obtain authorization and provenance. A full training run requires all four
 existing gates; preparing an account/template is not GPU verification.
 
 ## 2. Hardware, image and storage selection
 
-Planning recommendation: **one full NVIDIA A100 80 GB**, Linux x86-64/amd64,
+Authorized target: **one NVIDIA RTX 4090 24 GB**, Linux x86-64/amd64,
 8 allocated vCPUs minimum (16 preferred), 64 GB allocated host RAM, and **300 GB
-SSD/NVMe container disk**. Avoid MIG partitions and fractional-memory offers.
+SSD/NVMe container disk**. Use the full GPU allocation, not a shared-memory offer.
 Select an on-demand offer with direct SSH, suitable transfer bandwidth and a
 contract duration you can monitor. There is no measured training-time estimate.
 Check allocated resources, not the host's advertised total or burst resources.
-[A100 specifications](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf?ncid=no-ncid),
+[RTX 4090 specifications](https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/),
 [Vast execution environment](https://docs.vast.ai/guides/instances/docker-environment).
 
-**VRAM estimates, not measurements:** budget roughly 32–64 GiB for planning
-A0–A3 FP32/batch-16 trials, with low confidence; this is neither a measured
-minimum nor an upper bound. The four retained DA-V2 prior tensors alone are
+**VRAM is unmeasured:** selecting a 24 GB card is not evidence that batch 16 fits.
+The four retained DA-V2 prior tensors alone are
 about 0.42 GiB at the default resolution/batch, excluding detector activations,
 DA-V2 workspaces, optimizer, gradients and allocator overhead. A1–A3 run frozen
-DA-V2 with microbatch 1 but train the detector with batch 16. An 80 GB offer
-provides headroom; even its fit remains unverified. **24 GB is not established
-as sufficient.** Consider 48 GB only after an actual configured-batch gate on
-that hardware. Do not silently reduce A0's batch or enable AMP to fit.
+DA-V2 with microbatch 1 but train the detector with batch 16. There is no defensible
+measured total VRAM estimate here. Run the real configured-batch gates on the
+RTX 4090 first. On OOM the script saves failure/memory evidence and stops; it
+never retries with a smaller batch or AMP. See step 6 for the explicit protocol
+tradeoff if a smaller batch is necessary.
 
 300 GB is a capacity budget, not measured usage or unlimited retention:
 
@@ -120,213 +127,221 @@ ssh -i $TaskKey -p $VastPort "root@${VastHost}"
 Use the username shown by the Connect panel if it differs from root. Confirm
 the host key when connecting; do not disable SSH host-key checking.
 
-## 4. Bootstrap source and CUDA environment (Linux SSH terminal)
+## 4. Clone and set up the authorized instance
 
-Stop at any failed command. This runbook uses Bash and the root SSH account.
-For an explicitly non-root template, prefix apt commands with sudo.
+All Linux commands below run in Bash over SSH as root in the documented developer
+image. Stop at any error. The new wrappers must first be reviewed/committed and
+made available via approved push or Git bundle; reference commit 4cf0f97 alone
+does not contain them.
 
 ```bash
 set -euo pipefail
 apt-get update
-apt-get install -y build-essential git ninja-build unzip rsync tmux libgl1 libglib2.0-0 ca-certificates
-export TASK_ROOT=/workspace/depth-monoia
-mkdir -p "$TASK_ROOT"/{incoming,evidence,pretrained,experiments,backups,setup_logs}
-nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
-nvcc --version
-free -h
-df -h "$TASK_ROOT" /dev/shm
-source /opt/conda/etc/profile.d/conda.sh
-git clone --branch develop --recurse-submodules https://github.com/wolverSTW/depth-mono-thesis.git "$TASK_ROOT/source"
-cd "$TASK_ROOT/source"
-read -r -p 'Approved preparation commit SHA (from local git log): ' DEPLOY_COMMIT
+apt-get install -y git
+mkdir -p /workspace/depth-monoia
+cd /workspace/depth-monoia
+git clone --branch develop --recurse-submodules https://github.com/wolverSTW/depth-mono-thesis.git source
+cd source
+read -r -p 'Reviewed deployment commit SHA: ' DEPLOY_COMMIT
 git checkout --detach "$DEPLOY_COMMIT"
 git submodule update --init --recursive
-test -z "$(git status --porcelain)"
-git rev-parse HEAD
-git submodule status
+cp -n configs/vast/environment.example.env local.vast.env
+bash scripts/vast/setup.sh
 ```
 
-The preparation SHA must be reachable on the remote before the clone above.
-If publication is not approved, make a bundle on Windows after the local commit:
+Without push approval, create/transfer a Git bundle on Windows **after review and
+commit**, preserving existing history. Public pinned submodules fetch separately.
 
 ```powershell
 git -C .\Depth-MonoIA-Thesis bundle create ..\depth-monoia-develop.bundle develop
-# Transfer the bundle to the instance's incoming directory using scp, as below.
+scp -i $TaskKey -P $VastPort .\depth-monoia-develop.bundle "root@${VastHost}:/workspace/depth-monoia/"
 ```
 
-Then substitute these Linux commands for the GitHub clone (same new destination):
+Replace the GitHub clone with the following, using the same new destination,
+then perform the same commit checkout/submodule/setup sequence:
 
 ```bash
-git clone --branch develop "$TASK_ROOT/incoming/depth-monoia-develop.bundle" "$TASK_ROOT/source"
-cd "$TASK_ROOT/source"
-git remote set-url origin https://github.com/wolverSTW/depth-mono-thesis.git
-# Continue with DEPLOY_COMMIT checkout and submodule update above.
-```
-
-Bundles preserve project history; public pinned submodules are fetched separately.
-Do not copy a source-only ZIP or edit source on the GPU. Keep the bundle off-host.
-
-Create a session environment file (ignored by Git, contains no credentials):
-
-```bash
-cat > local.vast.env <<'EOF'
-export TASK_ROOT=/workspace/depth-monoia
-export KITTI_ROOT=$TASK_ROOT/datasets/KITTIDataset
-export OUTPUT_ROOT=$TASK_ROOT/experiments
-export CHECKPOINT_DIR=$TASK_ROOT/pretrained
-export MANIFEST=$TASK_ROOT/evidence/local.dataset.json
-export CUDA_HOME=/usr/local/cuda
-export PATH=$CUDA_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}
-export TORCH_HOME=$TASK_ROOT/torch_cache
-export MAX_JOBS=4
-export GPU_DEVICE=0
-EOF
-source local.vast.env
-bash scripts/gpu/setup_environment.sh --env-name depth-monoia-gpu 2>&1 | tee "$TASK_ROOT/setup_logs/setup.log"
-conda activate depth-monoia-gpu
-python -m pip freeze > "$TASK_ROOT/setup_logs/pip-freeze.txt"
-git rev-parse HEAD > "$TASK_ROOT/setup_logs/source_commit.txt"
-git submodule status > "$TASK_ROOT/setup_logs/submodules.txt"
-nvidia-smi > "$TASK_ROOT/setup_logs/nvidia-smi.txt"
-nvcc --version > "$TASK_ROOT/setup_logs/nvcc.txt"
-```
-
-The script creates Python 3.9, installs torch 2.4.1/torchvision 0.19.1 cu121 and
-`requirements/linux-cu121.txt` (NumPy 1.26.4, Numba 0.60.0), then compiles original
-deformable attention for the actual GPU into `build/ops`. It checks CUDA/toolkit
-versions; the image's base Python is not assumed to be 3.9. The equivalent torch
-install is `python -m pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu121`.
-[Official version pairing](https://pytorch.org/get-started/previous-versions/).
-
-CUDA_HOME must point to the complete toolkit, including NVVM/NVRTC used by the
-Numba KITTI evaluator, not only CUDA runtime wheels. The devel image supplies it.
-[Numba 0.60 CUDA requirements](https://numba.readthedocs.io/en/0.60.0/cuda/overview.html).
-Do not install a second arbitrary CUDA toolkit. If Conda requests channel terms,
-review them before proceeding; do not silently accept terms on someone's behalf.
-
-After every reconnect or new tmux shell:
-
-```bash
-source /opt/conda/etc/profile.d/conda.sh
-conda activate depth-monoia-gpu
+git clone --branch develop /workspace/depth-monoia/depth-monoia-develop.bundle /workspace/depth-monoia/source
 cd /workspace/depth-monoia/source
-source local.vast.env
+git remote set-url origin https://github.com/wolverSTW/depth-mono-thesis.git
 ```
 
-## 5. Transfer and prepare KITTI, evidence and pretrained weights
+`setup.sh` installs build/download tools, creates Python 3.9, installs torch
+2.4.1/torchvision 0.19.1 cu121 and requirements/linux-cu121.txt, builds original
+CUDA ops for the actual GPU, checks RTX 4090 hardware and records the environment.
+It fetches SHA-256-verified DA-V2-Small weights and starts **no training**.
+[Official PyTorch pairing](https://pytorch.org/get-started/previous-versions/).
+The original builder fetches its original ResNet backbone on first construction
+and records the cache bytes. A0 training does not use trained MonoIA val weights.
 
-In a second Windows PowerShell terminal (reuse host/port/key variables), adapt
-only the local input locations to where you actually saved the authentic files:
+Each task automatically activates Conda and sources ignored `local.vast.env`.
+CUDA_HOME points to `/usr/local/cuda`, including nvcc/NVVM/NVRTC needed by the
+Numba KITTI evaluator, not only runtime wheels. Do not install another arbitrary
+toolkit. Review any Conda channel terms rather than silently accepting them.
+[Numba requirements](https://numba.readthedocs.io/en/0.60.0/cuda/overview.html).
+Defaults are derived from TASK_ROOT=/workspace/depth-monoia:
 
-```powershell
-$DataInput = 'D:\KITTI'
-$EvidenceInput = 'D:\depth-monoia-evidence'
-scp -i $TaskKey -P $VastPort "$DataInput\data_object_image_2.zip" "$DataInput\data_object_calib.zip" "$DataInput\data_object_label_2.zip" "root@${VastHost}:/workspace/depth-monoia/incoming/"
-scp -i $TaskKey -P $VastPort "$EvidenceInput\train.txt" "$EvidenceInput\val.txt" "$EvidenceInput\local.dataset.json" "$EvidenceInput\val_reference.json" "root@${VastHost}:/workspace/depth-monoia/evidence/"
-scp -r -i $TaskKey -P $VastPort "$EvidenceInput\val_predictions" "root@${VastHost}:/workspace/depth-monoia/evidence/"
-```
+| Data | Path beneath TASK_ROOT |
+| --- | --- |
+| Source | `source` |
+| KITTI | `datasets/KITTIDataset` |
+| Download cache | `downloads/kitti` |
+| Manifest | `evidence/local.dataset.json` |
+| Reference inputs | `evidence/val_predictions`, `evidence/val_reference.json` |
+| Pretrained / experiments / environment logs | `pretrained`, `experiments`, `setup_logs` |
 
-Back in Linux, from source with the environment activated:
+## 5. Direct official KITTI download and manifest generation
+
+Prepare the private source specification **on the GPU server**:
 
 ```bash
-mkdir -p "$KITTI_ROOT/ImageSets"
-unzip -n "$TASK_ROOT/incoming/data_object_image_2.zip" -d "$KITTI_ROOT"
-unzip -n "$TASK_ROOT/incoming/data_object_calib.zip" -d "$KITTI_ROOT"
-unzip -n "$TASK_ROOT/incoming/data_object_label_2.zip" -d "$KITTI_ROOT"
-cp -n "$TASK_ROOT/evidence/train.txt" "$KITTI_ROOT/ImageSets/train.txt"
-cp -n "$TASK_ROOT/evidence/val.txt" "$KITTI_ROOT/ImageSets/val.txt"
-sha256sum "$KITTI_ROOT/ImageSets/"{train,val}.txt
-bash scripts/gpu/prepare_dataset.sh --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST"
-bash scripts/gpu/download_pretrained.sh --name dav2_small --checkpoint-dir "$CHECKPOINT_DIR"
-# Optional, separate official-checkpoint evaluation; not A0 training initialization:
-bash scripts/gpu/download_pretrained.sh --name monoia_val --checkpoint-dir "$CHECKPOINT_DIR"
+cp -n configs/vast/kitti_sources.example.json local.kitti_sources.json
+chmod 600 local.kitti_sources.json
+# Edit this file through your SSH editor / VS Code Remote SSH before proceeding.
+bash scripts/vast/prepare_kitti.sh
 ```
 
-Expected layout is `$KITTI_ROOT/training/{image_2,calib,label_2}/000000.*` and
-`$KITTI_ROOT/ImageSets/{train,val}.txt`. Each downloader verifies the immutable
-official SHA-256 recorded in `docs/reproducibility/sources.json`. The MonoIA builder
-also downloads its original pretrained ResNet backbone to `$TORCH_HOME/checkpoints`
-on first construction; retain network access and this cache. Its actual bytes
-are hashed in the gate/run metadata. A0 is independently trained with that
-original backbone initialization, **not** fine-tuned from MonoIA validation weights.
+Fill these fields before the final command:
 
-## 6. Existing mandatory gates, including actual batch capacity
+- Set `authorized_official_downloads` true only after obtaining official KITTI
+  access and reviewing its terms. Copy exact authorized HTTPS ZIP URLs for
+  image_2, calib and label_2 from the official account. Record public, nonsecret
+  acquisition provenance in `download_source`. No S3 links/mirrors are invented.
+- Signed URLs are supported. Alternatively set `authentication.cookie_file`
+  (Netscape cookie file) or `netrc_file` to an existing authenticated session file.
+  Paths are relative to the JSON directory or absolute. Keep authentication
+  files outside Git and `chmod 600`. curl receives URL/auth settings via stdin;
+  signed URLs/credentials are suppressed in argv, logs and public metadata.
+  Never put secrets in a provenance field.
+- Archive `sha256`/`sha256_source` are optional when a trusted expected hash is
+  available; if supplied it must match. Otherwise source trust relies on the
+  operator-authorized official HTTPS download. SHA-256 is computed and ZIP CRC
+  verified **before extraction**, then a verification receipt is saved. A recorded
+  hash alone is not independent source authentication. No nonexistent published
+  official archive checksum is required.
+- Both original splits require a trusted expected SHA-256 and its provenance,
+  count 3712/3769, and an immutable trusted `url` or a local `path`. Set
+  `split_source` to evidence these are the original designated MonoIA lists.
+  Hashing an arbitrary list does not establish original-protocol provenance.
+  These split inputs remain missing here; no random split is substituted.
 
-Execute serially. G2 now uses a complete batch from the real augmented training
-loader (default 16), performs forward/backward/optimizer steps, and records input
-shape plus peak allocated/reserved CUDA memory in `details.capacity`. G3 verifies
-full-state restoration and next-step agreement; G4 checks independent reference
-evidence. Gates mutate only temporary models, not experiment checkpoints.
+curl uses retries and `.part` range resume where supported. Renew expired signed
+URLs in the ignored JSON. Unsupported range resume fails clearly; inspect/preserve
+partial files before manually restarting a download. Cached archives reuse a
+matching expected hash or previous verified receipt and are not downloaded again.
+Existing matching extracted files are retained; conflicting files are not overwritten.
+CRC, unsafe ZIP paths/links and disk capacity are checked. Individual files publish
+atomically; the existing artifact lock serializes preparation.
+
+All three full official object archives are required. The image/calibration ZIPs
+may include testing files; training uses only the designated train IDs and held-out
+validation. Expected layout is `training/{image_2,calib,label_2}/000000.*` plus
+`ImageSets/{train,val}.txt` under KITTI_ROOT. No test/validation labels enter training.
+Preparation calls the existing `verify_dataset`, verifies hashes, split counts,
+disjoint coverage of all 7481 labeled IDs and required files, then generates the
+existing manifest. It records archive hashes/CRC/public provenance while excluding
+URLs/authentication. Extra manual manifest fields survive; identity conflicts fail.
+No genuine KITTI download/extraction has been executed on this CPU laptop.
+
+## 6. RTX 4090 capacity and existing G1?G4 gates
+
+Before a long run, explicitly request real-data GPU verification only:
 
 ```bash
-for EXP in A0 A3 A1 A2; do
-  python scripts/research.py verify --experiment "$EXP" --gpu \
-    --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" \
-    --checkpoint-dir "$CHECKPOINT_DIR" \
-    --reference-predictions "$TASK_ROOT/evidence/val_predictions" \
-    --reference-metrics "$TASK_ROOT/evidence/val_reference.json" \
-    --output "$TASK_ROOT/evidence/${EXP}_gates.json"
-done
+bash scripts/vast/train_a0.sh --verify-only
+bash scripts/vast/train_a3.sh --verify-only
 ```
 
-Stop on any failure. No PASS is claimed here. A gate's representative batch is
-not proof of peak memory across every augmented batch or the full 250 epochs.
-Leave headroom and monitor training. On OOM, select more memory before modifying
-the reproduction protocol. No silent AMP, batch reduction or multi-GPU change.
-If shared-memory/DataLoader failure actually occurs, an explicit `--workers 0`
-is supported; use the same setting for gates, training and evaluation and record
-it. Do not add such overrides speculatively. G4 also exercises the CUDA evaluator.
+G2 exercises the intended batch (16 by default), real forward/backward/optimizer
+steps, and records input/GPU/dtype plus peak allocated/reserved bytes in
+`details.capacity`. G3 verifies full-state restore/next-step agreement. G4 uses
+independent real KITTI R40 reference evidence. Unique reports live under
+`/workspace/depth-monoia/evidence/gates/`. CUDA OOM records `CUDA_OOM`, memory and
+the unchanged batch; training stops. No automatic smaller-batch/AMP retry occurs.
+A representative batch that fits is not a full-run peak guarantee.
+If reference evidence is still missing, --verify-only can measure real G2/G3
+capacity with a verified dataset, but G4 remains BLOCKED and the command exits
+nonzero. It cannot permit full training. A normal training task refuses missing
+reference inputs before GPU work.
 
-## 7. Full training: four independent configurations and run directories
-
-Only after paid training approval and PASS gates, run `tmux new -s depth-monoia`,
-then activate/source the environment as in step 4. Run **one experiment at a time**.
-Default settings remain batch 16, 250 epochs, seed 444, original 1280x384 detector
-input, original augmentation/loss/optimizer/scheduler and float32. A0's original
-MonoIA model and epoch implementation are preserved; fusion is external to it.
+If batch 16 OOMs, review the scientific tradeoff before explicitly testing a
+smaller batch. Eight is an example, **not** a verified fit:
 
 ```bash
-# A0: Original MonoIA -- configs/baseline/A0.yaml
-bash scripts/gpu/train_baseline.sh --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" \
-  --checkpoint-dir "$CHECKPOINT_DIR" --gates "$TASK_ROOT/evidence/A0_gates.json" \
-  --output-root "$OUTPUT_ROOT" --run-name run_001 --gpu-device 0
-
-# A3: DA-V2 Intrinsic-Aware Gated Fusion -- configs/proposed/A3.yaml
-bash scripts/gpu/train_proposed.sh --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" \
-  --checkpoint-dir "$CHECKPOINT_DIR" --gates "$TASK_ROOT/evidence/A3_gates.json" \
-  --output-root "$OUTPUT_ROOT" --run-name run_001 --gpu-device 0
-
-# A1: DA-V2 Simple Fusion -- configs/ablation/A1.yaml
-bash scripts/gpu/train_ablation.sh --experiment A1 --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" \
-  --checkpoint-dir "$CHECKPOINT_DIR" --gates "$TASK_ROOT/evidence/A1_gates.json" \
-  --output-root "$OUTPUT_ROOT" --run-name run_001 --gpu-device 0
-
-# A2: DA-V2 Gated Fusion -- configs/ablation/A2.yaml
-bash scripts/gpu/train_ablation.sh --experiment A2 --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" \
-  --checkpoint-dir "$CHECKPOINT_DIR" --gates "$TASK_ROOT/evidence/A2_gates.json" \
-  --output-root "$OUTPUT_ROOT" --run-name run_001 --gpu-device 0
+bash scripts/vast/train_a0.sh --verify-only --batch-size 8
+bash scripts/vast/train_a3.sh --verify-only --batch-size 8
 ```
 
-These are the full designated training split, not train+val and not smoke tests.
-A4 remains locked. Choose a new run name for a new experiment; existing run
-directories are refused. Detach tmux with Ctrl+B then D; `tmux attach -t depth-monoia`
-reconnects. From a separate SSH shell:
+For a controlled comparison set `export VAST_BATCH_SIZE=8` in local.vast.env and
+apply the SAME setting to new A0/A1/A2/A3 runs. Label this a protocol deviation,
+not an exact original-batch reproduction. Batch reduction changes update count
+and gradient noise; no original-protocol equivalence is claimed. Effective batch
+is the configured batch: one GPU, accumulation=1. Optimizer/LR/scheduler remain
+original unless separately reviewed; no silent LR scaling, accumulation, seed or
+precision change. Metadata records batch/effective batch/optimizer/scheduler/seed/
+precision and protocol_changes. Compare equal comparison_group hashes.
+A genuine DataLoader shared-memory failure can use explicit `--workers 0` or
+`VAST_WORKERS=0`; do not add speculative overrides. Missing split provenance and
+independent G4 inputs still block both original and reduced-batch training.
+
+## 7. One task command per experiment
+
+Only on an approved instance with reviewed, committed and clean source:
 
 ```bash
-tail -f "$OUTPUT_ROOT/A3_intrinsic_fusion/run_001/logs/events.jsonl"
-# Other useful views, after ending tail with Ctrl+C:
-tail -n 40 "$OUTPUT_ROOT/A3_intrinsic_fusion/run_001/logs/training.log"
+tmux new -s depth-monoia
+cd /workspace/depth-monoia/source
+bash scripts/vast/train_a0.sh
+```
+
+Run each remaining task separately, serially on the one GPU:
+
+```bash
+bash scripts/vast/train_a1.sh
+bash scripts/vast/train_a2.sh
+bash scripts/vast/train_a3.sh
+bash scripts/vast/evaluate_all.sh
+```
+
+Setup/data tasks never invoke training. Explicit train_aN commands run fresh
+matching G1?G4 before full training; --verify-only stops after gates. Wrappers
+reuse research.py and project modules; no training/evaluation implementation is
+copied. Configs remain configs/baseline/A0.yaml, configs/ablation/A1.yaml,
+configs/ablation/A2.yaml, configs/proposed/A3.yaml.
+Defaults are batch 16/250 epochs/seed 444/1280x384/original augmentation/loss/
+optimizer/scheduler, float32, single GPU. A4 stays locked. Unique UTC timestamp
+run names prevent overwriting previous runs. To use the run_001 examples below,
+explicitly add `--run-name run_001`. Always use the actual printed run directory.
+A failed gate exits nonzero before creating the training run directory.
+
+Detach with Ctrl+B then D; reconnect with `tmux attach -t depth-monoia`.
+Monitor the actual run (substitute its printed timestamp or explicit run name):
+
+```bash
+RUN_DIR=/workspace/depth-monoia/experiments/A3_intrinsic_fusion/run_001
+tail -f "$RUN_DIR/logs/events.jsonl"
+# After ending tail:
 nvidia-smi
-df -h "$TASK_ROOT"
+df -h /workspace/depth-monoia
 ```
 
-First Ctrl+C **inside the training shell**, or SIGTERM to its Python PID, requests
-an epoch-boundary stop after validation and checkpoint commit. Wait for process
-exit. Second interrupt/hard termination abandons the current epoch; resume replays
-it. Provider deadline/host loss may prevent cleanup. No exact mid-epoch resume.
+First Ctrl+C inside training (or SIGTERM to its Python PID) requests an epoch-
+boundary stop after validation/checkpoint. Wait for exit. A second signal/hard
+kill replays the incomplete epoch on resume; no exact mid-epoch resume is claimed.
 
 ## 8. Checkpoints, evaluation and machine-readable outputs
+
+The one-task evaluation command is `bash scripts/vast/evaluate_all.sh`. It uses
+each actual run's saved config. It refuses existing final output directories;
+do not rerun it over completed outputs expecting overwrite. Deliberate re-evaluation
+uses the lower-level CLI with a new destination. The advanced commands below use
+explicit run_001 names; substitute actual timestamped names when applicable.
+Initialize the advanced shell variables after reconnecting:
+
+```bash
+source scripts/vast/common.sh
+vast_activate
+```
 
 Run directories under `$OUTPUT_ROOT`:
 
@@ -390,6 +405,10 @@ necessary before a thesis full-GFLOPs comparison. No metric values are fabricate
 
 ## 9. Off-host backups and Windows artifact download
 
+These examples use run_001 only if explicitly selected. Substitute the actual
+run directory printed by train_aN.sh, and `source scripts/vast/common.sh` plus
+`vast_activate` in a fresh Linux shell before invoking lower-level backup tools.
+
 Back up after the first committed epoch, at subsequent useful epoch boundaries
 (prefer every committed epoch when transfer speed permits), and after final
 evaluation. A running backup uses the same artifact lock as writers; archive
@@ -408,7 +427,7 @@ printf '%s\n' "$SNAPSHOT"
 sha256sum "$TASK_ROOT/backups/$SNAPSHOT"
 # Once per deployment / whenever evidence changes; checkpoint archives exclude these:
 SUPPORT=deployment_support_$(date -u +%Y%m%dT%H%M%SZ).tar.gz
-tar -czf "$TASK_ROOT/backups/$SUPPORT" -C "$TASK_ROOT" evidence setup_logs
+tar -czf "$TASK_ROOT/backups/$SUPPORT" -C "$TASK_ROOT" evidence setup_logs -C "$KITTI_ROOT" ImageSets
 sha256sum "$TASK_ROOT/backups/$SUPPORT" > "$TASK_ROOT/backups/$SUPPORT.sha256"
 printf '%s\n' "$SUPPORT"
 ```
@@ -440,6 +459,12 @@ Restore verifies both whole-archive and each member SHA-256, rejects unsafe path
 links and refuses existing destinations; it works without a GPU. Do not run the
 run-restore tool against the separate support tar (it has no SNAPSHOT inventory).
 Keep the original evidence/data locally; the support tar is an extra copy.
+With server-side acquisition, retain the source URLs/provenance and a secure
+off-server copy of your private source specification separately; renew expired
+official links after host loss. The support tar preserves actual original
+ImageSets split bytes, public manifest, reference evidence and environment logs.
+Run snapshots exclude full KITTI/pretrained files; recovery re-downloads them
+from authorized original sources and checks the same recorded bytes/hashes.
 Keep at least the latest and preceding verified off-host run snapshots if space
 permits. No credentials, data, checkpoint or generated archives belong in Git.
 Any deletion/pruning is a separate reviewed action; this guide issues none.
@@ -454,11 +479,20 @@ storage billing may continue. No script here destroys or purchases instances.
 Same surviving instance: activate/source the environment, retain source/data/
 operator bytes and use the original gates. Resume explicitly:
 
+The beginner task wrapper can run fresh gates and resume the saved configuration
+in one explicit command (use the actual run path):
+
+```bash
+bash scripts/vast/train_a3.sh --resume /workspace/depth-monoia/experiments/A3_intrinsic_fusion/run_001
+```
+
+The lower-level equivalent with previously matching gate evidence is:
+
 ```bash
 RUN_DIR="$OUTPUT_ROOT/A3_intrinsic_fusion/run_001"
 bash scripts/gpu/resume_training.sh --config "$RUN_DIR/config.yaml" \
   --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" --checkpoint-dir "$CHECKPOINT_DIR" \
-  --gates "$TASK_ROOT/evidence/A3_gates.json" --run-dir "$RUN_DIR" \
+  --gates "$RUN_DIR/gates.json" --run-dir "$RUN_DIR" \
   --resume "$RUN_DIR/checkpoints/last.pth"
 ```
 
@@ -510,14 +544,17 @@ after a successful recovery.
 
 ## Audit outcome and approval boundary
 
-Implemented: independent A0–A3 configs/runs, safe full-state save/resume, actual
-evaluation/export, locked checksum backups/restores. This preparation additionally
-fixes the one-sample capacity gate and checks the complete CUDA 12.1 toolkit early.
-Only configured-batch Linux CUDA execution can establish fit/compatibility.
+Implemented: seven task entry points reusing the existing runner, authenticated
+official-source acquisition with safe cached reruns, original-split verification,
+manifest generation, independent A0–A3 outputs and explicit-batch/OOM reporting.
+Existing full-state resume, real evaluation/export and verified off-server
+backup/restore remain in use. No model architecture was replaced.
 
-Genuine pre-rental blockers: trusted KITTI/split/reference inputs ready to transfer;
-this exact preparation commit available remotely or via bundle; owner approval
-of the selected paid offer/budget. GPU-only build/G2–G4 and actual VRAM measurement
-are pending acceptance work on that authorized machine. Full-GFLOPs coverage is
-a remaining reporting limitation. No GPU verification, full training, measured
-performance improvement or paid operation is claimed.
+Remaining external requirements: official download authorization/URLs; trusted
+original split provenance/hashes; independent G4 reference evidence; reviewed and
+committed wrapper changes available with history; and approval of a paid RTX 4090
+offer. Archive expected hashes are optional when unavailable; authenticated
+official acquisition plus CRC/recorded hashes is explicitly distinguished from
+independent source authentication. Linux build, real dataset download, G1–G4 and
+batch-16 fit on 24 GB remain pending. Full-GFLOPs coverage is a reporting limitation.
+No GPU verification, training, performance improvement or paid operation is claimed.

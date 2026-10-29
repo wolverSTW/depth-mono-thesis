@@ -63,6 +63,8 @@ def resolve_config(path, dataset_root=None, overrides=None):
         raise ValueError("MonoIA training/evaluation requires CUDA")
     if cfg["execution"]["devices"] != 1 or cfg["execution"]["precision"] != "float32":
         raise ValueError("Audited runner supports one GPU per process and float32 only")
+    if cfg["execution"].get("gradient_accumulation_steps", 1) != 1:
+        raise ValueError("Gradient accumulation is unsupported; effective batch equals the configured batch")
     expected_modes = {"A0": None, "A1": "simple", "A2": "gated", "A3": "intrinsic", "A4": "confidence"}
     if cfg["depth"]["mode"] != expected_modes[cfg["experiment"]["id"]]:
         raise ValueError("Experiment/fusion mode mismatch")

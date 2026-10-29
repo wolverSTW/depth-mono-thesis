@@ -51,6 +51,31 @@ Vast.ai is the exclusive GPU training provider. Follow the
 hardware/storage estimates, full KITTI A0–A3 commands, evaluation, Windows backups
 and replacement-instance resume. Prepared commands are not GPU verification.
 
+The target is now **RTX 4090 24 GB**. On an approved, compatible Vast Linux server,
+after reviewing/committing and transferring these changes:
+
+```bash
+bash scripts/vast/setup.sh
+# Fill ignored local.kitti_sources.json with authorized official URLs and trusted
+# original split hashes/provenance; supply the independent G4 reference inputs.
+bash scripts/vast/prepare_kitti.sh
+bash scripts/vast/train_a0.sh --verify-only
+bash scripts/vast/train_a3.sh --verify-only
+# Only after reviewing actual capacity/gate results and approving full training:
+bash scripts/vast/train_a0.sh
+bash scripts/vast/train_a1.sh
+bash scripts/vast/train_a2.sh
+bash scripts/vast/train_a3.sh
+bash scripts/vast/evaluate_all.sh
+```
+
+Run serially. Setup/preparation never train. Each training task verifies G1–G4,
+uses its existing configuration and creates a unique run. Batch 16 remains the
+default; 24 GB fit is **unverified**. OOM stops without batch/AMP fallback.
+Explicit `--batch-size N` is a recorded protocol deviation; apply the same
+reviewed batch to all comparisons. `--resume RUN_DIRECTORY` uses full-state resume.
+The original split provenance and independent evaluator evidence are still missing.
+
 `MonoIA/` and `third_party/Depth-Anything-V2/` are unmodified Git submodules.
 The extension package is `depth_monoia/`. Local branch: `develop`.
 No push is performed without approval. After publication:

@@ -4,6 +4,12 @@ Vast.ai is the exclusive GPU provider. [VAST_AI_RUNBOOK.md](VAST_AI_RUNBOOK.md)
 steps 9–10 provide the actual `/workspace/depth-monoia` snapshot, mapped-port SSH,
 Windows SHA-256/restore check and replacement-instance commands. The generic
 paths below illustrate the same existing tools; they are not assumed mounts.
+The RTX 4090 task workflow downloads KITTI on-server. Preserve original ImageSets
+split bytes, public manifest, independent references and setup logs via the
+runbook's separate deployment_support archive, as well as verified run snapshots.
+Keep authorized source specifications/authentication in a secure off-server place;
+they are deliberately excluded from public run metadata. Full KITTI/pretrained
+files can be downloaded again from the same authorized sources on a replacement.
 
 Do not treat a stopped GPU instance as an off-machine backup. Archives contain
 checkpoints, resolved configs, metadata, completed evaluation outputs and logs;

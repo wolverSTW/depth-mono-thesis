@@ -16,11 +16,13 @@ from depth_monoia.provenance import checkpoint_info, verify_checkpoint, verify_d
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["verify", "train", "evaluate", "benchmark", "evaluate-all", "fetch-checkpoint",
-                        "prepare-dataset", "verify-gpu", "resolve-config", "backup", "restore", "aggregate"])
+                        "prepare-dataset", "prepare-kitti", "verify-gpu", "resolve-config", "backup", "restore", "aggregate"])
     parser.add_argument("--config")
     parser.add_argument("--experiment", choices=list(CONFIGS))
     parser.add_argument("--dataset-root")
     parser.add_argument("--manifest")
+    parser.add_argument("--source-spec")
+    parser.add_argument("--download-root")
     parser.add_argument("--run-dir")
     parser.add_argument("--output-root", default=str(ROOT / "experiments"))
     parser.add_argument("--run-name", default="run_001")
@@ -48,6 +50,11 @@ def main():
         for name in names:
             if getattr(args, name) is None:
                 parser.error(args.command + " requires --" + name.replace("_", "-"))
+    if args.command == "prepare-kitti":
+        required("source_spec", "download_root", "dataset_root", "manifest")
+        from depth_monoia.kitti_download import prepare
+        prepare(args.source_spec, args.dataset_root, args.download_root, args.manifest)
+        return
     if args.command == "fetch-checkpoint":
         required("name")
         spec = checkpoint_info(args.name)

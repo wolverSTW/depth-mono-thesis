@@ -4,6 +4,18 @@ Vast.ai is the exclusive GPU provider. The [single Vast.ai runbook](VAST_AI_RUNB
 gives exact A0/A1/A2/A3 commands, the configured-batch G2/G3 capacity check,
 evaluation paths and Windows backup/replacement-instance recovery commands.
 
+The beginner workflow is `bash scripts/vast/train_a0.sh` (and train_a1/a2/a3.sh),
+each using the existing configuration. Add `--verify-only` to measure the intended
+batch and run G1–G4 without starting full training. RTX 4090 batch-16 capacity is
+pending. CUDA OOM is recorded and stops; there is no automatic batch or AMP retry.
+Optional `--batch-size N`/VAST_BATCH_SIZE requires a reviewed, equally applied
+protocol deviation. Effective batch equals configured batch (one GPU, no
+accumulation). Metadata records optimizer, scheduler, seed and effective batch.
+Timestamp run names prevent overwriting old runs; `--run-name run_001` is explicit.
+Resume via `bash scripts/vast/train_a3.sh --resume /actual/run/directory`; saved
+config, hashes and full-state checks remain enforced. The scripts activate Conda
+automatically. The lower-level scripts/gpu examples below remain supported.
+
 Status: commands prepared, not GPU verified or executed. First complete
 GPU_SETUP_GUIDE.md and matching G1–G4. Source must be committed/clean. All commands
 run from the project root in the activated environment.

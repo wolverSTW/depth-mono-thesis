@@ -18,7 +18,7 @@ def static_checks():
     for path in files:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     # No CUDA extension import on CPU; import the actual new modules instead.
-    for module in ("config", "provenance", "fusion", "depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting"):
+    for module in ("config", "provenance", "fusion", "depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting", "kitti_download"):
         importlib.import_module("depth_monoia." + module)
     configs = {name: load_config(ROOT / path) for name, path in CONFIGS.items()}
     for name, cfg in configs.items():
@@ -58,7 +58,7 @@ def static_checks():
     if not tested.wasSuccessful():
         raise AssertionError(stream.getvalue())
     bash = (Path("C:/Program Files/Git/bin/bash.exe") if os.name == "nt" else Path(shutil.which("bash") or "/missing/bash"))
-    shell_files = sorted((ROOT / "scripts/gpu").glob("*.sh"))
+    shell_files = sorted((ROOT / "scripts").rglob("*.sh"))
     shell_status = "Pending: Bash unavailable"
     if bash.is_file():
         for script in shell_files:
@@ -93,6 +93,8 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
         cfg, metadata = preparation(config, dataset_root, manifest, overrides, checkpoint_dir)
         result["identity"] = metadata["identity"]
         result["data"] = metadata["data"]
+        result["configuration"] = cfg
+        result["training_protocol"] = metadata["training_protocol"]
         result["G1"] = "PASS"
     except (OSError, ValueError) as error:
         result["details"]["G1"] = str(error)
@@ -111,11 +113,23 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
             if len(batch[0]) != cfg["dataset"]["batch_size"]:
                 raise ValueError("G2 requires a complete configured training batch")
             result["details"]["integration_train_ids"] = batch[3]["img_id"].tolist()
-            result["details"]["capacity"] = g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata)
+            capacity = result["details"]["capacity"] = {}
+            g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capacity)
             result["G2"] = result["G3"] = "PASS"
         except Exception as error:
             result["details"]["G2_G3"] = type(error).__name__ + ": " + str(error)
+            if isinstance(error, torch.cuda.OutOfMemoryError):
+                result["details"]["capacity"] = {
+                    **result["details"].get("capacity", {}), "status": "CUDA_OOM",
+                    "configured_batch_size": cfg["dataset"]["batch_size"],
+                    "gpu": torch.cuda.get_device_name(),
+                    "device_total_bytes": torch.cuda.get_device_properties(0).total_memory,
+                    "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
+                    "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
+                    "action": "Stopped. Batch size/precision unchanged. Review protocol before an explicit batch reduction."}
         try:
+            if result["details"].get("capacity", {}).get("status") == "CUDA_OOM":
+                raise ValueError("G4 not run after configured-batch CUDA OOM; no training permitted")
             if not reference_predictions or not reference_metrics:
                 raise ValueError("G4 requires real validation reference predictions and independently obtained KITTI R40 metrics")
             from .evaluation import benchmark
@@ -147,7 +161,7 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
     return all(result[g] == "PASS" for g in ("G1", "G2", "G3", "G4"))
 
 
-def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
+def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capacity=None):
     from .checkpoint import save, resume, rng_state
     from lib.helpers.trainer_helper import Trainer
     images, calibs, targets, info = batch
@@ -181,12 +195,14 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata):
     step()
     step()
     torch.cuda.synchronize()
-    capacity = {"batch_size": len(images), "input_shape": list(images.shape),
+    if capacity is None:
+        capacity = {}
+    capacity.update({"status": "TRAINING_STEPS_FIT", "batch_size": len(images), "input_shape": list(images.shape),
                 "dtype": str(images.dtype), "gpu": torch.cuda.get_device_name(),
                 "device_total_bytes": torch.cuda.get_device_properties(0).total_memory,
                 "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
                 "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
-                "scope": "two real configured-batch training steps, including optimizer state; not a full-run VRAM guarantee"}
+                "scope": "two real configured-batch training steps, including optimizer state; not a full-run VRAM guarantee"})
     if hasattr(model, "fusion"):
         for name, p in model.fusion.named_parameters():
             if p.grad is None or not torch.isfinite(p.grad).all() or not p.grad.abs().sum() > 0:

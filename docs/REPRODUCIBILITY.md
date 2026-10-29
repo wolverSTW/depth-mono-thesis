@@ -13,7 +13,8 @@ The latest local verification's Python hashes match this implementation; its
 parent-commit/dirty flag records the real check before milestone commit creation.
 MonoIA: `69d6ee30ca5e44848727387dd44af6d56d62c24f`.
 DA-V2: `a561b849ebae10a6f5ef49e26c83cbbcd36c71bf`.
-Both remain unmodified. No remote push has occurred.
+Both remain unmodified. Bootstrap 89c6b99 was pushed with owner approval; Vast
+preparation 4cf0f97 remains local. RTX 4090 task changes are uncommitted for review.
 
 ## Software and hardware
 
@@ -32,6 +33,9 @@ Prepared GPU stack: Linux, Python 3.9, torch 2.4.1, torchvision 0.19.1, CUDA too
 12.1, NumPy 1.26.4; remaining pins in requirements/linux-cu121.txt. GPU model,
 driver/compiler and actual resolved GPU environment are Pending. Runs record
 packages, GPU name, CUDA/cuDNN, backbone-cache and compiled-operator hashes.
+The selected target is now Vast.ai RTX 4090 24 GB. G2/G3 at the intended batch,
+not the advertised card size, determines initial capacity acceptance. Gate reports
+record actual peaks and explicit OOM; no automatic batch/precision fallback.
 
 ## Data and checkpoints
 
@@ -40,6 +44,10 @@ the example using real data and original split evidence. Validation labels never
 enter training. Identity includes split hashes, annotation/calibration inventory,
 config, upstream/code hashes and prior checkpoint hash. Full image authentication
 relies on trusted acquisition; images receive coverage/size checks.
+The new scripts/vast/prepare_kitti.sh generates this same manifest from real
+official-server downloads and verified original splits. Archive receipts record
+SHA-256/CRC and distinguish expected-hash verification from a recorded hash of an
+authorized HTTPS download. Signed URLs/cookies/netrc credentials are excluded.
 
 DA-V2 Small official bytes match SHA-256
 `715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378`.
@@ -57,6 +65,11 @@ next step, not promised bitwise reproducibility across different hardware.
 
 G1–G4 all remain Pending here. Their evidence must match code/config/data/prior
 identity before full training. Isolated tensor checks are not KITTI evidence.
+Run/gate metadata explicitly records batch, effective batch, one device,
+accumulation=1, optimizer/scheduler, seed, precision and protocol deviations.
+If batch 16 OOMs, an explicit reduced batch must be shared by all compared variants
+and labeled a deviation from the original training protocol; accumulation/AMP
+are not silently added. See VAST_AI_RUNBOOK.md for task commands and safe resume.
 No training, benchmark claim, test submission or cloud resource was started.
 Archive actual configs, logs, gates and checkpoint hashes with each real result.
 
