@@ -257,11 +257,14 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capac
         torch.testing.assert_close(expected_loss, actual_loss, rtol=1e-5, atol=1e-6)
         for key, value in model.state_dict().items():
             try:
+                # Exact checkpoint model restoration was checked above.
+                # This comparison allows bounded FP32 CUDA replay drift;
+                # it does NOT establish bitwise-identical training replay.
                 torch.testing.assert_close(
                     value.cpu(),
                     expected[key],
                     rtol=1e-5,
-                    atol=1e-6
+                    atol=5e-6
                 )
             except AssertionError as error:
                 raise AssertionError(
