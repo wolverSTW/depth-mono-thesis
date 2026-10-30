@@ -1,0 +1,18 @@
+--- a/MonoIA/lib/datasets/kitti/kitti_eval_python/rotate_iou.py
++++ b/MonoIA/lib/datasets/kitti/kitti_eval_python/rotate_iou.py
+@@ -174,7 +174,14 @@
+     adad = ad0 * ad0 + ad1 * ad1
+     adap = ad0 * ap0 + ad1 * ap1
+
+-    return abab >= abap and abap >= 0 and adad >= adap and adap >= 0
++
++    eps_ab = 1e-6 * max(abab, 1e-12)
++    eps_ad = 1e-6 * max(adad, 1e-12)
++
++    return (
++        -eps_ab <= abap <= abab + eps_ab
++        and -eps_ad <= adap <= adad + eps_ad
++    )
+
+
+ @cuda.jit('(float32[:], float32[:], float32[:])', device=True, inline=True)
