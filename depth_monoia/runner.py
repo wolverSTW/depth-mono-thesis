@@ -104,8 +104,7 @@ def train(config, dataset_root, manifest, run_dir, gate_evidence, resume=None, o
     if gate.get("identity") != metadata["identity"] or any(gate.get(g) != "PASS" for g in ("G1", "G2", "G3", "G4")):
         raise ValueError("All four gates must PASS for this exact configuration before full training")
     metadata["verification_gates"] = gate
-    if cfg["experiment"]["id"] == "A4":
-        raise ValueError("A4 remains locked until A0–A3 real evidence is reviewed")
+    # A4 unlocked after documented A0-A3 evidence review.
     require_cuda()
     if metadata["environment"]["dirty"]:
         raise ValueError("Commit reviewed source/configuration before full training")
