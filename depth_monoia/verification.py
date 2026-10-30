@@ -213,6 +213,11 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capac
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "resume.pth"
         save(path, model, optimizer, scheduler, warmup, 1, 0.0, metadata, global_step=2)
+        # Preserve exact model state at the checkpoint boundary.
+        saved_model_state = {
+            name: tensor.detach().cpu().clone()
+            for name, tensor in model.state_dict().items()
+        }
         saved_scheduler = scheduler.state_dict()
         saved_rng = rng_state()
         expected_loss = step()
@@ -233,8 +238,34 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capac
         assert restored_rng["numpy"][2:] == saved_rng["numpy"][2:]
         assert torch.equal(restored_rng["torch"], saved_rng["torch"])
         assert all(torch.equal(a, b) for a, b in zip(restored_rng["cuda"], saved_rng["cuda"]))
+        # A checkpoint must restore model tensors exactly BEFORE
+        # testing numerical reproducibility of the next GPU step.
+        for name, tensor in model.state_dict().items():
+            if not torch.equal(
+                tensor.detach().cpu(), saved_model_state[name]
+            ):
+                raise AssertionError(
+                    "Checkpoint restoration mismatch before replay: "
+                    + name
+                )
+        print(
+            "PASS: Model state restored bitwise exactly",
+            flush=True
+        )
+
         actual_loss = step()
         torch.testing.assert_close(expected_loss, actual_loss, rtol=1e-5, atol=1e-6)
         for key, value in model.state_dict().items():
-            torch.testing.assert_close(value.cpu(), expected[key], rtol=1e-5, atol=1e-6)
+            try:
+                torch.testing.assert_close(
+                    value.cpu(),
+                    expected[key],
+                    rtol=1e-5,
+                    atol=1e-6
+                )
+            except AssertionError as error:
+                raise AssertionError(
+                    "Post-resume GPU replay mismatch in tensor "
+                    + key + ": " + str(error)
+                ) from error
     return capacity
