@@ -2,8 +2,16 @@
   "inspected_date": "2026-10-29",
   "remote": "https://github.com/wolverSTW/depth-mono-thesis.git",
   "sources": {
-    "MonoIA": {"url": "https://github.com/alanzhangcs/MonoIA.git", "commit": "4f8a8e26b9e468bbeef12df1fc245b6636693261", "license": "MIT"},
-    "third_party/Depth-Anything-V2": {"url": "https://github.com/DepthAnything/Depth-Anything-V2.git", "commit": "a561b849ebae10a6f5ef49e26c83cbbcd36c71bf", "license": "Apache-2.0; Small weights Apache-2.0, larger weights CC-BY-NC-4.0"}
+    "MonoIA": {
+      "url": "https://github.com/alanzhangcs/MonoIA.git",
+      "commit": "6f2e23dc15f16427e98f2a69d2580c324c98b435",
+      "license": "MIT"
+    },
+    "third_party/Depth-Anything-V2": {
+      "url": "https://github.com/DepthAnything/Depth-Anything-V2.git",
+      "commit": "a561b849ebae10a6f5ef49e26c83cbbcd36c71bf",
+      "license": "Apache-2.0; Small weights Apache-2.0, larger weights CC-BY-NC-4.0"
+    }
   },
   "checkpoints": {
     "dav2_small": {
