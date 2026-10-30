@@ -322,6 +322,25 @@ run names prevent overwriting previous runs. To use the run_001 examples below,
 explicitly add `--run-name run_001`. Always use the actual printed run directory.
 A failed gate exits nonzero before creating the training run directory.
 
+For an approved preliminary session, keep the same full configuration and add
+an absolute session boundary, for example:
+
+```bash
+bash scripts/vast/train_a0.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a1.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a2.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a3.sh --run-name preliminary20_001 --stop-after-epoch 20
+```
+
+Run serially. Each stops only after epoch 20 validation/evaluation and committed
+checkpoints, retaining the original 250-epoch schedule and all gates. The run is
+marked preliminary_stopped with an explicit reason and no completed.json.
+Resume the actual run directory with `--resume` and omit the boundary to continue
+at epoch 21; `--stop-after-epoch 40` would stop at absolute epoch 40. An already
+reached boundary is rejected. See [training guide](GPU_TRAINING_GUIDE.md) for all
+four resume commands and [review](PRELIMINARY_TRAINING_REVIEW.md) for evidence.
+No GPU execution of this workflow has been verified locally.
+
 Detach with Ctrl+B then D; reconnect with `tmux attach -t depth-monoia`.
 Monitor the actual run (substitute its printed timestamp or explicit run name):
 

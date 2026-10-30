@@ -1,0 +1,39 @@
+{
+  "reviewed_commit": "918fa22346d63a766b4568457b8e960fdd488307",
+  "configuration_comparison": "PASS: resolved A0-A3 configurations exactly equal to pre-change snapshot",
+  "protected_file_hashes": {
+    "configs/ablation/A1.yaml": "f5b6f341246b05fb0bb92fe7ee92cfd07845e78a5fe4b52b7a3d989670791772",
+    "configs/ablation/A2.yaml": "0a212d6f6bc3bf906b36758d2e83b2224448582d2a6d4e766b7e5c27cdd0f388",
+    "configs/ablation/A4.yaml": "ee416cc716f1a755a7dbdf9dd4c973674141ca5fe70732f42cc44240d1c87c58",
+    "configs/baseline/A0.yaml": "85f5ce8f2c60f377ec0d9a2d8d4f14c39fbfa07f27b971fef53d4ed1e8a3e55c",
+    "configs/common.yaml": "1463706c4b2555ff81647561cfbcd4540d6d03c56b6894b2aa5a0ed2c3ea19b5",
+    "configs/proposed/A3.yaml": "05dffcff913f408b12fee1b51ea47826bb54bafe201c5878e2ed0c042dbf2205",
+    "configs/vast/environment.example.env": "69edb70df62b8043ca4392a6b52eccd486bedb7a4ad18906c85e4855c5595fd9",
+    "configs/vast/kitti_sources.example.json": "1f135f2963697e123d49bf824ca07f9e4b8ebf3013beb626c4ea4d9b9ee669a4",
+    "data/protocols/kitti_3dop_chen/train.txt": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb",
+    "data/protocols/kitti_3dop_chen/val.txt": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86",
+    "depth_monoia/checkpoint.py": "489e681692f4888172c176cedaeeb819905e736ad8743324d385322732df1f7f",
+    "depth_monoia/config.py": "9a3b2bcdafae8fc0fbf7232c0c89a8c0287dc149b8149364416fb8294aae1ab3",
+    "depth_monoia/evaluation.py": "3b54cb2e4474796fc6a61b61bbce0c8d3191236836d2e108bfd81fb812da0268",
+    "depth_monoia/provenance.py": "f3ffe9501762307e2360f237a860bcde49b1294a05b201ca5c9f93ef88ac2876",
+    "depth_monoia/verification.py": "042ca635e7657ce9db8b9ba571d8d8ecdf7637138c763f0c81da32314cdd533c",
+    "docs/reproducibility/kitti_3dop_chen.json": "9647a7c10188a0a322b0d0474090a245c0f9bc1d36a602049b81df59e40a457e"
+  },
+  "per_epoch_body_comparison": "PASS: AST identical to reviewed loop body, except signal flag representation and extracted session boundary",
+  "published_split_check": {
+    "protocol": "kitti_3dop_chen",
+    "splits": {
+      "train": {
+        "count": 3712,
+        "sha256": "b6417a1d9b18c8fdb085128e633d28ff321b7674a6d1b3841b8f43d865b281cb"
+      },
+      "val": {
+        "count": 3769,
+        "sha256": "657ac4bcc1e156e5b106a4ca18e1f88e012787ea1d2b5d0adeea97fee903fa86"
+      }
+    },
+    "split_source": "https://github.com/charlesq34/frustum-pointnets/tree/2ffdd345e1fce4775ecb508d207e0ad465bcca80/kitti/image_sets",
+    "split_repository_commit": "2ffdd345e1fce4775ecb508d207e0ad465bcca80",
+    "protocol_definition_sha256": "9647a7c10188a0a322b0d0474090a245c0f9bc1d36a602049b81df59e40a457e"
+  }
+}

@@ -60,6 +60,58 @@ paid runs without approval or assume the original batch fits a given GPU.
 
 ## Monitoring and stopping
 
+### Preliminary sessions through epoch 20
+
+After owner approval, source review/transfer, real data preparation and G1–G4,
+run these tasks serially on the approved Vast server:
+
+```bash
+bash scripts/vast/train_a0.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a1.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a2.sh --run-name preliminary20_001 --stop-after-epoch 20
+bash scripts/vast/train_a3.sh --run-name preliminary20_001 --stop-after-epoch 20
+```
+
+Each task retains the configured **250 epochs**, original LR decays at
+85/125/165/205, disabled warmup, batch 16, seed 444, FP32, augmentation and
+`kitti_3dop_chen` split. The optional boundary is a session argument, recorded in
+events and training_state.json, outside configuration and experiment identity.
+The four experiments keep independent directories/checkpoints/logs. All gates
+remain mandatory. `--verify-only --stop-after-epoch 20` validates the boundary and
+runs gates without training.
+
+The stop happens after epoch 20 training, real validation inference, R40 evaluation,
+best/last checkpoint publication, hashes and evaluation metadata. The saved
+zero-based `next_epoch` is **20**, so continuation starts at displayed epoch **21**
+(upstream training code prints zero-based index 20). Check training_state.json for
+`status: preliminary_stopped`, `stop_reason: stop_after_epoch`, and
+`stop_after_epoch: 20`. No completed.json is created at this boundary.
+
+To continue the same run to its original full horizon, omit the stop argument:
+
+```bash
+bash scripts/vast/train_a0.sh --resume "$OUTPUT_ROOT/A0_baseline/preliminary20_001"
+bash scripts/vast/train_a1.sh --resume "$OUTPUT_ROOT/A1_simple_fusion/preliminary20_001"
+bash scripts/vast/train_a2.sh --resume "$OUTPUT_ROOT/A2_gated_fusion/preliminary20_001"
+bash scripts/vast/train_a3.sh --resume "$OUTPUT_ROOT/A3_intrinsic_fusion/preliminary20_001"
+```
+
+For another bounded session, add an absolute later boundary, e.g.
+`--stop-after-epoch 40`. Values must be integers in 1–250. Resume rejects a
+boundary already reached/passed without changing checkpoint or status files;
+omit it or choose a later value. A boundary equal to 250 permits normal full
+completion and completed.json. Completed runs cannot be rewound in place.
+
+The shared Vast wrapper forwards the option for all four tasks; the lower-level
+scripts/gpu train/resume wrappers already forward CLI arguments. The same option
+is available directly through `python scripts/research.py train` with the existing
+manifest, gates, run/config and checkpoint arguments. Resume retains every
+identity/hash/asset check; do not edit a saved config or alter max_epoch to 20.
+See [review and CPU evidence](PRELIMINARY_TRAINING_REVIEW.md) for limits. These
+commands have not been executed on a GPU.
+
+### Signal stops and monitoring
+
 Use tmux on the authorized Vast.ai instance, with one training command in the
 session (`tmux new -s depth-monoia`). Activate Conda and source local.vast.env in
 that shell as the runbook specifies. Monitor artifacts and copy them off-host:

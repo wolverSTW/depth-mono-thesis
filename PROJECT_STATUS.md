@@ -1,6 +1,6 @@
 # Project status
 
-Updated: 2026-10-29. Editable research record; do not replace manual sections.
+Updated: 2026-10-30. Editable research record; do not replace manual sections.
 
 ## Current milestone
 
@@ -9,9 +9,10 @@ pending. M5–M6 operational bootstrap implemented and locally checked. Real GPU
 execution remains blocked by missing data/hardware/reference evidence. Vast.ai
 is the exclusive training provider. Current target is RTX 4090 24 GB; one-command
 task workflow is implemented locally, with real configured-batch Linux CUDA
-acceptance pending. The RTX 4090 workflow is now committed at `50eac764a015e696f3deba3efe563470e42407f7`;
-the source/split audit and published 3DOP protocol/F3 changes below remain local
-and uncommitted for human review.
+acceptance pending. Reviewed base is now `918fa22346d63a766b4568457b8e960fdd488307`,
+including the published 3DOP protocol and F3-01 correction. Preliminary epoch-stop
+implementation below is local and uncommitted for human review. Earlier milestone
+and audit notes are preserved as historical records.
 Branch: `develop`. M1: `c3e7a5691e5155007fe1def666d490ad909331f4`.
 Implementation: `006d83e326d91d5dad996e2158cc18575a11e5b4`.
 Operational bootstrap: `ed871c0d46d84fb122f6fe07ac3c428dd739168c`.
@@ -75,9 +76,9 @@ Exact report/final milestone hashes: `git log --oneline`.
   KITTI will download directly on the GPU server; laptop data is not required.
   Published split provenance is verified. Exact original MonoIA split equivalence
   remains unverified, a scope limitation rather than a blocker for the approved protocol.
-- Review the uncommitted published-protocol/F3 changes. No automatic commit/push.
+- Review the uncommitted preliminary-session changes. No automatic commit/push.
   Transfer that exact reviewed commit via separately approved push or Git bundle before
-  training. 50eac764 contains scripts/vast, but not these new protocol/F3 changes.
+  training. 918fa22 contains protocol/F3 fixes, but not the new session boundary.
 - Owner approval of an actual Vast offer/budget is required before paid resources.
 - Linux CUDA environment and compiled deformable attention are required for G2–G4.
 - G4 additionally needs real reference predictions and independently executed
@@ -142,7 +143,7 @@ real-data G1–G4 on an approved Vast Linux CUDA machine.
 
 ## Next tasks and actual execution status
 
-The previous bootstrap push is complete. Review the uncommitted protocol/F3 changes;
+The previous bootstrap push is complete. Review the uncommitted preliminary-session changes;
 do not commit or push until review. Once the reviewed source, authentic inputs
 and paid-operation approval are available, execute VAST_AI_RUNBOOK.md: setup,
 direct official KITTI preparation, intended-batch G1–G4, A0 under the published
@@ -259,3 +260,66 @@ independent real G4 reference evidence, reviewed source transfer and owner appro
 then actual Linux CUDA build, configured-batch capacity and full-state resume/G2–G3.
 Exact original MonoIA split equivalence remains unverified; the approved research
 protocol remains kitti_3dop_chen.
+
+## Preliminary epoch-20 sessions — 2026-10-30
+
+Implemented optional --stop-after-epoch for A0–A3 as an absolute, one-based session
+boundary. The original 250-epoch horizon, optimizer, scheduler/decays, warmup policy,
+seed/batch/FP32, augmentation, loss/evaluation and published split are unchanged.
+The real epoch callback must finish training, validation/R40 evaluation and atomic
+checkpoint/hash/metadata publication before the stop controller acts.
+training_state.json records preliminary_stopped and an explicit stop reason;
+completed.json is reserved for the full configured schedule.
+
+Schema-2 checkpoints remain unchanged and contain all model/optimizer/scheduler/
+optional-warmup/RNG/global-step/next-epoch/metadata state. Stop at epoch 20 saves
+next_epoch=20; resume starts at epoch 21. The stop boundary is outside saved
+configuration and identity, preserving same-code gate/checkpoint compatibility.
+Changed implementation code still invalidates older identity evidence; no migration
+or bypass is introduced. Invalid/reached/passed boundaries and completed-run rewinds
+are rejected. Existing first/second SIGINT/SIGTERM semantics remain supported.
+The shared Vast wrapper now accepts/forwards the option; generic GPU forwarding
+already supported it. Full real G1–G4 remain mandatory for preliminary training.
+
+CPU evidence: 41 passing tests (12 new session tests), 22 Python files/imports,
+five configurations, 23 Bash syntax checks, existing fusion/official-depth-load
+checks and four wrapper help calls. Resolved A0–A3 configs exactly equal the
+pre-change reviewed 918fa22 snapshot; 16 protected file hashes are unchanged.
+An AST comparison confirms the epoch body is unchanged apart from signal flag
+representation and extracted boundary control. Scalar save/resume tests exercise
+the actual scheduler builder, RNG/optimizer restoration, epoch 21 and all four
+decays, with optional warmup branch coverage only in a unit config copy.
+No KITTI/detector/benchmark fixture or fabricated passing gate evidence was used.
+
+Evidence: docs/reproducibility/PRELIMINARY_TRAINING_LOCAL_VERIFICATION.json and
+PRELIMINARY_TRAINING_CONFIGURATION_COMPARISON.json in the same directory.
+The consolidated CLI exits 2 for BLOCKED G1–G4, not failed CPU tests.
+Review: docs/PRELIMINARY_TRAINING_REVIEW.md. Commands: GPU_TRAINING_GUIDE.md and
+VAST_AI_RUNBOOK.md. Real Linux CUDA end-to-end acceptance is still pending.
+
+Remaining blockers: authentic full dataset/manifest acceptance (G1), actual CUDA
+build and configured-batch capacity (G2), real full-state resume agreement (G3),
+independent real R40 evaluation reference (G4), reviewed/clean source transfer and
+explicit owner approval of paid Vast work. Private source-spec credentials were
+not inspected. No KITTI download, GPU training/resource, commit/staging/push.
+HEAD remains develop/918fa22. Changes await human review.
+
+## Preliminary-session F1 status correction — 2026-10-30
+
+Fixed status labeling so preliminary_stopped requires the requested stop boundary
+to have been reached by a committed epoch. SIGINT/SIGTERM at epoch 7 with a
+configured epoch-20 boundary now records stopped and the actual signal name;
+normal epoch-20 preliminary stopping and full epoch-250 completion are preserved.
+The change is confined to the status condition, with two new signal regressions.
+
+Complete CPU verification: 43 tests passed (14 session tests), 22 Python files/
+imports, five configs and 23 Bash syntax checks passed. All resolved configs and
+16 protected file hashes remain unchanged; checkpoint schema, published split,
+identity computation/checks and G1–G4 logic are unchanged. Existing source-hash
+compatibility checks still apply. Actual evidence:
+docs/reproducibility/PRELIMINARY_TRAINING_F1_LOCAL_VERIFICATION.json.
+Earlier evidence is preserved. CLI exit 2 continues to reflect BLOCKED G1–G4.
+
+See docs/PRELIMINARY_TRAINING_REVIEW.md for exact follow-up files and behavior.
+No dataset download, real training/GPU operation, commit, staging or push.
+All previously recorded G1–G4 acceptance blockers and human review remain pending.

@@ -11,26 +11,28 @@ case "$experiment" in
   *) echo 'Only A0–A3 are supported.' >&2; exit 2 ;;
 esac
 if [[ ${1:-} == --help ]]; then
-  echo "Usage: bash scripts/vast/train_${experiment,,}.sh [--verify-only] [--batch-size N] [--workers N] [--run-name NAME] [--resume RUN_DIRECTORY]"
+  echo "Usage: bash scripts/vast/train_${experiment,,}.sh [--verify-only] [--batch-size N] [--workers N] [--run-name NAME] [--resume RUN_DIRECTORY] [--stop-after-epoch N]"
   echo "Uses $config; full real G1–G4 must pass before training. No automatic batch/AMP changes."
   exit 0
 fi
 source "$(dirname -- "$0")/common.sh"
 verify_only=false
 resume_dir=
+stop_after_epoch=
 run_name=${RUN_NAME:-run_$(date -u +%Y%m%dT%H%M%SZ)}
 batch_size=${VAST_BATCH_SIZE:-}
 workers=${VAST_WORKERS:-}
 while (($#)); do
   case "$1" in
     --verify-only) verify_only=true; shift ;;
-    --batch-size|--workers|--run-name|--resume)
+    --batch-size|--workers|--run-name|--resume|--stop-after-epoch)
       (($# >= 2)) || { echo "Missing value for $1" >&2; exit 2; }
       case "$1" in
         --batch-size) batch_size=$2 ;;
         --workers) workers=$2 ;;
         --run-name) run_name=$2 ;;
         --resume) resume_dir=$2 ;;
+        --stop-after-epoch) stop_after_epoch=$2 ;;
       esac
       shift 2 ;;
     *) echo "Unsupported argument: $1" >&2; exit 2 ;;
@@ -55,6 +57,7 @@ vast_activate
 args=(--config "$config" --experiment "$experiment" --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" --checkpoint-dir "$CHECKPOINT_DIR")
 if [[ -n "$batch_size" ]]; then args+=(--batch-size "$batch_size"); fi
 if [[ -n "$workers" ]]; then args+=(--workers "$workers"); fi
+if [[ -n "$stop_after_epoch" ]]; then args+=(--stop-after-epoch "$stop_after_epoch"); fi
 mkdir -p "$TASK_ROOT/evidence/gates"
 gates=$TASK_ROOT/evidence/gates/${experiment}_$(date -u +%Y%m%dT%H%M%S)_${BASHPID}.json
 echo "Running real configured-batch GPU gates. Evidence: $gates"

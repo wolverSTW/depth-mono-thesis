@@ -48,6 +48,24 @@ No placeholder best/last/metrics files are created. Full-state loading requires 
 trusted run; official MonoIA weights are authenticated against official hashes
 before their pickled metadata can be loaded. Raw DA-V2 weights use weights-only.
 
+`--stop-after-epoch 20` preserves schema 2 and the configured 250-epoch schedule.
+The boundary is checked after the entire epoch publication callback returns;
+last.pth contains next_epoch=20, full optimizer/scheduler/optional-warmup/RNG and
+global-step state, and unchanged configuration/identity metadata. It resumes at
+epoch 21. best.pth may represent an earlier epoch; use last.pth for continuation.
+training_state.json and events record preliminary_stopped/stop_after_epoch, while
+completed.json is reserved for the configured full horizon. The boundary itself
+does not participate in identity. Existing backup/restore includes these status
+and log files. Back up verified artifacts off-host before destroying an instance.
+
+The source implementation still participates in identity: gates/checkpoints
+created under different code are not automatically compatible. Use the same
+reviewed implementation for preliminary training and resume; no migration or
+identity bypass is introduced. If a crash occurs after checkpoint commitment
+but before the preliminary-status update, last.pth/hashes remain authoritative;
+status may still say epoch_committed. An interrupted multi-file publication
+requires the existing verified-backup recovery. Linux CUDA/G3 remains mandatory.
+
 Epoch evaluations save AP and raw predictions. Full evaluation adds distance,
 confidence and resources and publishes evaluation_metadata.json last. Backup and
 comparison include completed evidence; unfinished directories stay available for

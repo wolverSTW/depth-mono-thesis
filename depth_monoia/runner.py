@@ -3,7 +3,6 @@ import hashlib
 import json
 import logging
 import platform
-import signal
 import sys
 import time
 from contextlib import redirect_stdout
@@ -19,6 +18,7 @@ from .provenance import check_sources, environment, verify_dataset, verify_check
 from .model import build_model, upstream_path
 from .evaluation import infer, benchmark, auxiliary, profile
 from .reporting import export_benchmark, evaluation_metadata
+from .training_session import StopRequest, run_epoch_session, validate_stop_after_epoch
 
 
 def require_cuda():
@@ -96,8 +96,10 @@ class Tee:
             self.handle.flush()
 
 
-def train(config, dataset_root, manifest, run_dir, gate_evidence, resume=None, overrides=None, checkpoint_dir=None):
+def train(config, dataset_root, manifest, run_dir, gate_evidence, resume=None, overrides=None, checkpoint_dir=None,
+          stop_after_epoch=None):
     cfg, metadata = preparation(config, dataset_root, manifest, overrides, checkpoint_dir)
+    validate_stop_after_epoch(stop_after_epoch, cfg["trainer"]["max_epoch"])
     gate = json.loads(Path(gate_evidence).read_text())
     if gate.get("identity") != metadata["identity"] or any(gate.get(g) != "PASS" for g in ("G1", "G2", "G3", "G4")):
         raise ValueError("All four gates must PASS for this exact configuration before full training")
@@ -121,12 +123,13 @@ def train(config, dataset_root, manifest, run_dir, gate_evidence, resume=None, o
     lease = RunLock(run, timeout=0, name=".training.lock")
     lease.__enter__()
     try:
-        return _train_run(cfg, metadata, run, lock, checkpoint_dir, resume)
+        return _train_run(cfg, metadata, run, lock, checkpoint_dir, resume, stop_after_epoch)
     finally:
         lease.__exit__(None, None, None)
 
 
-def _train_run(cfg, metadata, run, lock, checkpoint_dir, resume):
+def _train_run(cfg, metadata, run, lock, checkpoint_dir, resume, stop_after_epoch=None):
+    validate_stop_after_epoch(stop_after_epoch, cfg["trainer"]["max_epoch"])
     model, criterion, optimizer, scheduler, warmup, train_loader, val_loader = components(cfg, checkpoint_dir)
     record_hub(metadata)
     actual_assets = {key: metadata[key] for key in ("backbone_cache", "compiled_ops")}
@@ -145,81 +148,64 @@ def _train_run(cfg, metadata, run, lock, checkpoint_dir, resume):
             if hashes.get(Path(resume).name) != sha256(resume):
                 raise ValueError("Resume checkpoint differs from committed hash; restore a verified snapshot")
             start, best, global_step = checkpoint.resume(resume, model, optimizer, scheduler, warmup, metadata)
+    validate_stop_after_epoch(stop_after_epoch, cfg["trainer"]["max_epoch"], start)
+    if (run / "completed.json").exists() and start < cfg["trainer"]["max_epoch"]:
+        raise ValueError("Cannot rewind a completed run in place; preserve its completion evidence")
     from lib.helpers.trainer_helper import Trainer
     logger = logging.getLogger("depth_monoia")
     logger.setLevel(logging.INFO)
     trainer = Trainer(dict(cfg["trainer"], save_path=str(run)), model, optimizer, train_loader, val_loader,
                       scheduler, warmup, logger, criterion, cfg["experiment"]["id"])
     events = TrainingEvents(run, lock, criterion, optimizer, global_step)
-    stop = [False]
-    def request_stop(signum, frame):
-        if stop[0]:
-            raise KeyboardInterrupt("Second stop signal: replay unfinished epoch on resume")
-        stop[0] = True
-    previous = {sig: signal.signal(sig, request_stop) for sig in (signal.SIGINT, signal.SIGTERM)}
-    next_epoch = start
-    tick_session = time.perf_counter()
+    stop = StopRequest()
     events.event("resumed" if resume else "started", source_commit=metadata["environment"]["git_commit"],
-                 environment=metadata["environment"], initialization_assets=actual_assets, next_epoch=start)
-    try:
-        for epoch in range(start, cfg["trainer"]["max_epoch"]):
-            events.epoch = epoch + 1
-            np.random.seed(np.random.get_state()[1][0] + epoch)
-            trainer.epoch = epoch
-            torch.cuda.reset_peak_memory_stats()
-            tick = time.perf_counter()
-            with (run / "logs/training.log").open("a", encoding="utf-8") as handle:
-                with redirect_stdout(Tee(sys.stdout, handle, lock)):
-                    trainer.train_one_epoch(epoch)
-            if stop[0]:
-                events.event("stop_requested", policy="finish current epoch validation and checkpoint")
-            if warmup is not None and epoch < 5:
-                warmup.step()
-            else:
-                scheduler.step()
-            epoch_dir = run / "evaluation" / f"epoch_{epoch + 1:03d}"
-            with lock:
-                if epoch_dir.exists():
-                    epoch_dir.rename(epoch_dir.with_name(epoch_dir.name + f"_interrupted_{time.time_ns()}"))
-                epoch_dir.mkdir()
-            infer(model, val_loader, cfg, epoch_dir / "predictions")
-            evaluation = benchmark(val_loader.dataset, epoch_dir / "predictions", epoch_dir / "metrics.json")
-            export_benchmark(epoch_dir, evaluation)
-            score = evaluation["Car_3d_moderate_R40"]
-            improved, best = score > best, max(best, score)
-            next_epoch = epoch + 1
-            with lock:
-                if improved:
-                    checkpoint.save(run / "checkpoints/best.pth", model, optimizer, scheduler, warmup,
-                                    next_epoch, best, metadata, events.global_step)
-                checkpoint.save(run / "checkpoints/last.pth", model, optimizer, scheduler, warmup,
+                 environment=metadata["environment"], initialization_assets=actual_assets, next_epoch=start,
+                 stop_after_epoch=stop_after_epoch)
+    def commit_epoch(epoch):
+        nonlocal best
+        events.epoch = epoch + 1
+        np.random.seed(np.random.get_state()[1][0] + epoch)
+        trainer.epoch = epoch
+        torch.cuda.reset_peak_memory_stats()
+        tick = time.perf_counter()
+        with (run / "logs/training.log").open("a", encoding="utf-8") as handle:
+            with redirect_stdout(Tee(sys.stdout, handle, lock)):
+                trainer.train_one_epoch(epoch)
+        if stop.reason is not None:
+            events.event("stop_requested", policy="finish current epoch validation and checkpoint")
+        if warmup is not None and epoch < 5:
+            warmup.step()
+        else:
+            scheduler.step()
+        epoch_dir = run / "evaluation" / f"epoch_{epoch + 1:03d}"
+        with lock:
+            if epoch_dir.exists():
+                epoch_dir.rename(epoch_dir.with_name(epoch_dir.name + f"_interrupted_{time.time_ns()}"))
+            epoch_dir.mkdir()
+        infer(model, val_loader, cfg, epoch_dir / "predictions")
+        evaluation = benchmark(val_loader.dataset, epoch_dir / "predictions", epoch_dir / "metrics.json")
+        export_benchmark(epoch_dir, evaluation)
+        score = evaluation["Car_3d_moderate_R40"]
+        improved, best = score > best, max(best, score)
+        next_epoch = epoch + 1
+        with lock:
+            if improved:
+                checkpoint.save(run / "checkpoints/best.pth", model, optimizer, scheduler, warmup,
                                 next_epoch, best, metadata, events.global_step)
-                hashes = {p.name: sha256(p) for p in (run / "checkpoints").glob("*.pth")}
-                write_json(run / "checkpoint_hashes.json", hashes)
-                write_json(epoch_dir / "evaluation_metadata.json", evaluation_metadata(cfg, metadata,
-                    {"sha256": hashes["last.pth"], "epoch": next_epoch}, "benchmark_complete", "independent_checkpoint"))
-                write_json(run / "training_state.json", {"next_epoch": next_epoch, "global_step": events.global_step,
-                    "best_AP3D_Moderate_R40": best, "status": "epoch_committed", "timestamp_utc": timestamp()})
-                events.event("checkpoint_saved", checkpoint_sha256=hashes, improved=improved,
-                    AP3D_Moderate_R40=score, epoch_and_validation_seconds=time.perf_counter() - tick,
-                    peak_GPU_allocated_MiB=torch.cuda.max_memory_allocated() / 2**20,
-                    next_lr=[g["lr"] for g in optimizer.param_groups])
-            if stop[0]:
-                events.event("stopped_at_epoch_boundary", next_epoch=next_epoch)
-                break
-        if next_epoch == cfg["trainer"]["max_epoch"]:
-            write_json(run / "completed.json", {"completed_epochs": next_epoch, "global_step": events.global_step,
-                "best_AP3D_Moderate_R40": best, "timestamp_utc": timestamp(), "last_session_seconds": time.perf_counter() - tick_session}, lock)
-            events.event("training_completed")
-    except BaseException as error:
-        events.event("interrupted", error_type=type(error).__name__, message=str(error),
-                     recovery="Resume last.pth; unfinished epoch is replayed")
-        raise
-    finally:
-        for sig, handler in previous.items():
-            signal.signal(sig, handler)
-        events.event("session_ended", duration_seconds=time.perf_counter() - tick_session)
-        events.close()
+            checkpoint.save(run / "checkpoints/last.pth", model, optimizer, scheduler, warmup,
+                            next_epoch, best, metadata, events.global_step)
+            hashes = {p.name: sha256(p) for p in (run / "checkpoints").glob("*.pth")}
+            write_json(run / "checkpoint_hashes.json", hashes)
+            write_json(epoch_dir / "evaluation_metadata.json", evaluation_metadata(cfg, metadata,
+                {"sha256": hashes["last.pth"], "epoch": next_epoch}, "benchmark_complete", "independent_checkpoint"))
+            write_json(run / "training_state.json", {"next_epoch": next_epoch, "global_step": events.global_step,
+                "best_AP3D_Moderate_R40": best, "status": "epoch_committed", "timestamp_utc": timestamp()})
+            events.event("checkpoint_saved", checkpoint_sha256=hashes, improved=improved,
+                AP3D_Moderate_R40=score, epoch_and_validation_seconds=time.perf_counter() - tick,
+                peak_GPU_allocated_MiB=torch.cuda.max_memory_allocated() / 2**20,
+                next_lr=[g["lr"] for g in optimizer.param_groups])
+    return run_epoch_session(run, lock, events, start, cfg["trainer"]["max_epoch"],
+                             commit_epoch, stop, stop_after_epoch)
 
 
 def evaluate(config, dataset_root, manifest, weights, run_dir, official=False, overrides=None, checkpoint_dir=None, benchmark_only=False, gate_evidence=None):

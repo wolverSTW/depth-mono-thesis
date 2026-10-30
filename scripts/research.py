@@ -32,6 +32,8 @@ def main():
     parser.add_argument("--reference-metrics")
     parser.add_argument("--gates")
     parser.add_argument("--resume")
+    parser.add_argument("--stop-after-epoch", type=int,
+                        help="Session stop after this completed epoch; preserves trainer.max_epoch and experiment identity")
     parser.add_argument("--checkpoint")
     parser.add_argument("--checkpoint-dir", default=str(ROOT / "checkpoints"))
     parser.add_argument("--official", action="store_true")
@@ -44,6 +46,8 @@ def main():
     parser.add_argument("--search-root", default=str(ROOT / "experiments"))
     parser.add_argument("--category", choices=["independent_checkpoint", "official_pretrained"], default="independent_checkpoint")
     args = parser.parse_args()
+    if args.stop_after_epoch is not None and args.command not in ("train", "verify"):
+        parser.error("--stop-after-epoch applies only to train or boundary validation with verify")
     config = Path(args.config or ROOT / CONFIGS[args.experiment or "A3"]).resolve()
     overrides = {"batch_size": args.batch_size, "workers": args.workers, "seed": args.seed}
     def required(*names):
@@ -94,6 +98,12 @@ def main():
         print(json.dumps(environment(), indent=2))
         return
     cfg = resolve_config(config, args.dataset_root, overrides)
+    if args.stop_after_epoch is not None:
+        from depth_monoia.training_session import validate_stop_after_epoch
+        try:
+            validate_stop_after_epoch(args.stop_after_epoch, cfg["trainer"]["max_epoch"])
+        except ValueError as error:
+            parser.error(str(error))
     if args.experiment and cfg["experiment"]["id"] != args.experiment:
         parser.error("--experiment conflicts with --config")
     if args.command == "resolve-config":
@@ -134,7 +144,8 @@ def main():
     if args.command == "train":
         required("gates")
         from depth_monoia.runner import train
-        train(config, args.dataset_root, args.manifest, run_dir, args.gates, args.resume, overrides, args.checkpoint_dir)
+        train(config, args.dataset_root, args.manifest, run_dir, args.gates, args.resume, overrides,
+              args.checkpoint_dir, stop_after_epoch=args.stop_after_epoch)
     else:
         required("checkpoint", "run_dir")
         from depth_monoia.runner import evaluate
