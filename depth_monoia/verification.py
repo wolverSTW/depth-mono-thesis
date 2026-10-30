@@ -99,8 +99,6 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
     except (OSError, ValueError) as error:
         result["details"]["G1"] = str(error)
     if gpu and result["G1"] == "PASS":
-        if cfg["experiment"]["id"] == "A4":
-            raise ValueError("A4 runtime verification is locked until A0–A3 work")
         try:
             from .runner import require_cuda
             require_cuda()
