@@ -162,6 +162,14 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
 
 
 def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capacity=None):
+    # Verification-only strict CUDA determinism.
+    # Full training must use matching backend settings if adopted.
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cuda.matmul.allow_tf32 = False
+    torch.backends.cudnn.allow_tf32 = False
+    torch.use_deterministic_algorithms(True)
+    print("VERIFY: Strict CUDA determinism enabled", flush=True)
     from .checkpoint import save, resume, rng_state
     from lib.helpers.trainer_helper import Trainer
     images, calibs, targets, info = batch
@@ -264,7 +272,7 @@ def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capac
                     value.cpu(),
                     expected[key],
                     rtol=1e-5,
-                    atol=5e-6
+                    atol=1e-6
                 )
             except AssertionError as error:
                 raise AssertionError(
