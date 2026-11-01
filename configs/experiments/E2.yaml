@@ -1,0 +1,9 @@
+# E2: only standardized dense relative depth; no intermediate encoder tokens at fusion.
+extends: ../common.yaml
+experiment:
+  id: E2
+  description: MonoIA with frozen DA-V2 standardized dense relative depth map only and gated residual fusion
+depth:
+  mode: gated
+  representation: single_standardized_relative_depth_map_only
+  prior_channels: 1

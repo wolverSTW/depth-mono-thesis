@@ -14,10 +14,14 @@ class FrozenDepthPrior(nn.Module):
         if representation not in (
             "four_DINO_intermediates_plus_standardized_relative_depth",
             "four_DINO_intermediates_only",
+            "single_standardized_relative_depth_map_only",
         ):
             raise ValueError("Unsupported DA-V2 representation: " + str(representation))
         self.representation = representation
-        self.prior_channels = 384 if representation == "four_DINO_intermediates_only" else 385
+        self.prior_channels = {
+            "four_DINO_intermediates_only": 384,
+            "single_standardized_relative_depth_map_only": 1,
+        }.get(representation, 385)
         sys.path.insert(0, str(ROOT / "third_party/Depth-Anything-V2"))
         from depth_anything_v2.dpt import DepthAnythingV2
         from depth_anything_v2.util.transform import Resize
@@ -63,11 +67,17 @@ class FrozenDepthPrior(nn.Module):
             scale = depth.std(dim=(-2, -1), keepdim=True, unbiased=False).clamp_min(1e-6)
             relative = (depth - mean) / scale
             relative = F.interpolate(relative, (height // 14, width // 14), mode="bilinear", align_corners=False)
-        priors = []
-        for tokens, _ in features:
-            tokens = F.layer_norm(tokens, (tokens.shape[-1],))
-            grid = tokens.transpose(1, 2).reshape(x.shape[0], 384, height // 14, width // 14)
-            priors.append(grid if encoder_only else torch.cat((grid, relative), dim=1))
+        # E2 uses the dense relative depth map alone. The ViT intermediate
+        # tokens are computed as inputs to the official frozen depth decoder,
+        # but no encoder token is passed to the detector fusion adapter.
+        if self.representation == "single_standardized_relative_depth_map_only":
+            priors = [relative] * 4
+        else:
+            priors = []
+            for tokens, _ in features:
+                tokens = F.layer_norm(tokens, (tokens.shape[-1],))
+                grid = tokens.transpose(1, 2).reshape(x.shape[0], 384, height // 14, width // 14)
+                priors.append(grid if encoder_only else torch.cat((grid, relative), dim=1))
         if any(not torch.isfinite(p).all() for p in priors):
             raise FloatingPointError("Nonfinite depth prior")
         return priors

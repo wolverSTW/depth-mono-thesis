@@ -32,6 +32,10 @@ def static_checks():
             configs["E1"]["depth"]["prior_channels"] != 384 or
             configs["E1"]["depth"]["mode"] != "gated"):
         raise ValueError("E1 static architecture contract mismatch")
+    if (configs["E2"]["depth"]["representation"] != "single_standardized_relative_depth_map_only" or
+            configs["E2"]["depth"]["prior_channels"] != 1 or
+            configs["E2"]["depth"]["mode"] != "gated"):
+        raise ValueError("E2 static architecture contract mismatch")
     # Isolated tensor algebra only: no dummy dataset, detector or benchmark.
     torch.manual_seed(17)
     for mode in ("simple", "gated", "intrinsic", "confidence"):
@@ -57,6 +61,10 @@ def static_checks():
     encoder_priors = [torch.randn(1, 384, 2, 3) for _ in range(4)]
     output = encoder_fusion(rgb, encoder_priors, torch.randn(1, 256))
     for before, after in zip(rgb, output):
+        torch.testing.assert_close(before, after, rtol=0, atol=0)
+    dense_fusion = MultiScaleFusion("gated", prior_channels=1)
+    dense_priors = [torch.randn(1, 1, 2, 3) for _ in range(4)]
+    for before, after in zip(rgb, dense_fusion(rgb, dense_priors, torch.randn(1, 256))):
         torch.testing.assert_close(before, after, rtol=0, atol=0)
     import unittest
     import io
@@ -94,6 +102,8 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
                                  representation=depth_cfg["representation"])
         if depth_cfg["representation"] == "four_DINO_intermediates_only" and hasattr(prior.network, "depth_head"):
             raise AssertionError("E1 decoder was not removed after strict pretrained loading")
+        if depth_cfg["representation"] == "single_standardized_relative_depth_map_only" and not hasattr(prior.network, "depth_head"):
+            raise AssertionError("E2 requires the verified official frozen dense depth decoder")
         prior.train(True)
         if prior.training or any(p.requires_grad for p in prior.parameters()):
             raise AssertionError("DA-V2 freeze/eval contract failed")

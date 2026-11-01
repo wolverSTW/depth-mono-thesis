@@ -38,8 +38,8 @@ class FusionLevel(nn.Module):
 class MultiScaleFusion(nn.Module):
     def __init__(self, mode, channels=256, levels=4, alpha_init=0.0, prior_channels=385):
         super().__init__()
-        if prior_channels not in (384, 385):
-            raise ValueError("Supported prior channels are 384 (E1) or 385 (legacy)")
+        if prior_channels not in (1, 384, 385):
+            raise ValueError("Supported prior channels are 1 (E2), 384 (E1), or 385 (legacy)")
         self.levels = nn.ModuleList([FusionLevel(channels, prior_channels=prior_channels,
                                                 mode=mode, alpha_init=alpha_init)
                                      for _ in range(levels)])
