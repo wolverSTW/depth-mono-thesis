@@ -1,0 +1,9 @@
+# E3 is E2 plus intrinsic-conditioned depth fusion gating.
+# MonoIA's pre-existing intrinsic adaptation in the RGB detector is unchanged.
+extends: E2.yaml
+experiment:
+  id: E3
+  description: MonoIA + frozen DA-V2 dense relative depth + intrinsic-conditioned fusion gate
+# Uses the original MonoIA connector embedding; no A5 camera-ray geometry.
+depth:
+  mode: intrinsic

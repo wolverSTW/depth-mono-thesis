@@ -36,6 +36,12 @@ def static_checks():
             configs["E2"]["depth"]["prior_channels"] != 1 or
             configs["E2"]["depth"]["mode"] != "gated"):
         raise ValueError("E2 static architecture contract mismatch")
+    # E3 and E2 must receive exactly the same frozen 1-channel relative
+    # depth representation. E3 differs by intrinsic-conditioned fusion only.
+    if (configs["E3"]["depth"]["representation"] != configs["E2"]["depth"]["representation"] or
+            configs["E3"]["depth"]["prior_channels"] != 1 or
+            configs["E3"]["depth"]["mode"] != "intrinsic"):
+        raise ValueError("E3 dense-depth intrinsic-gated contract mismatch")
     # Isolated tensor algebra only: no dummy dataset, detector or benchmark.
     torch.manual_seed(17)
     for mode in ("simple", "gated", "intrinsic", "confidence"):
@@ -66,6 +72,14 @@ def static_checks():
     dense_priors = [torch.randn(1, 1, 2, 3) for _ in range(4)]
     for before, after in zip(rgb, dense_fusion(rgb, dense_priors, torch.randn(1, 256))):
         torch.testing.assert_close(before, after, rtol=0, atol=0)
+    # E3 gated fusion must preserve exact initial baseline identity while
+    # adding four trainable intrinsic projections; benchmark evidence pending.
+    intrinsic_fusion = MultiScaleFusion("intrinsic", prior_channels=1)
+    for before, after in zip(rgb, intrinsic_fusion(rgb, dense_priors, torch.randn(1, 256))):
+        torch.testing.assert_close(before, after, rtol=0, atol=0)
+    if sum(p.numel() for p in intrinsic_fusion.parameters()) - sum(
+            p.numel() for p in dense_fusion.parameters()) != 4 * (256 * 256 + 256):
+        raise AssertionError("E3 intrinsic projection parameter contract mismatch")
     import unittest
     import io
     import shutil
