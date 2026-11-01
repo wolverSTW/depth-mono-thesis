@@ -8,8 +8,16 @@ from .provenance import verify_checkpoint
 
 
 class FrozenDepthPrior(nn.Module):
-    def __init__(self, checkpoint=None, input_size=518):
+    def __init__(self, checkpoint=None, input_size=518,
+                 representation="four_DINO_intermediates_plus_standardized_relative_depth"):
         super().__init__()
+        if representation not in (
+            "four_DINO_intermediates_plus_standardized_relative_depth",
+            "four_DINO_intermediates_only",
+        ):
+            raise ValueError("Unsupported DA-V2 representation: " + str(representation))
+        self.representation = representation
+        self.prior_channels = 384 if representation == "four_DINO_intermediates_only" else 385
         sys.path.insert(0, str(ROOT / "third_party/Depth-Anything-V2"))
         from depth_anything_v2.dpt import DepthAnythingV2
         from depth_anything_v2.util.transform import Resize
@@ -17,6 +25,10 @@ class FrozenDepthPrior(nn.Module):
         self.provenance = verify_checkpoint("dav2_small", checkpoint)
         self.network = DepthAnythingV2(encoder="vits", features=64, out_channels=[48, 96, 192, 384])
         self.network.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
+        # Full official checkpoint is verified and loaded before dropping E1's
+        # unused decoder. It is excluded from E1 parameter/VRAM accounting.
+        if self.representation == "four_DINO_intermediates_only":
+            del self.network.depth_head
         self.network.requires_grad_(False)
         self.network.eval()
         self.resize = Resize(input_size, input_size, resize_target=False,
@@ -42,16 +54,20 @@ class FrozenDepthPrior(nn.Module):
         x = F.interpolate(images.float(), (height, width), mode="bicubic", align_corners=False)
         features = self.network.pretrained.get_intermediate_layers(
             x, self.network.intermediate_layer_idx["vits"], return_class_token=True)
-        depth = self.network.depth_head(features, height // 14, width // 14).relu()
-        mean = depth.mean(dim=(-2, -1), keepdim=True)
-        scale = depth.std(dim=(-2, -1), keepdim=True, unbiased=False).clamp_min(1e-6)
-        relative = (depth - mean) / scale
-        relative = F.interpolate(relative, (height // 14, width // 14), mode="bilinear", align_corners=False)
+        # E1 deliberately never executes the dense depth decoder. Legacy
+        # A1-A4 retain the exact original decoder/standardization operations.
+        encoder_only = self.representation == "four_DINO_intermediates_only"
+        if not encoder_only:
+            depth = self.network.depth_head(features, height // 14, width // 14).relu()
+            mean = depth.mean(dim=(-2, -1), keepdim=True)
+            scale = depth.std(dim=(-2, -1), keepdim=True, unbiased=False).clamp_min(1e-6)
+            relative = (depth - mean) / scale
+            relative = F.interpolate(relative, (height // 14, width // 14), mode="bilinear", align_corners=False)
         priors = []
         for tokens, _ in features:
             tokens = F.layer_norm(tokens, (tokens.shape[-1],))
             grid = tokens.transpose(1, 2).reshape(x.shape[0], 384, height // 14, width // 14)
-            priors.append(torch.cat((grid, relative), dim=1))
+            priors.append(grid if encoder_only else torch.cat((grid, relative), dim=1))
         if any(not torch.isfinite(p).all() for p in priors):
             raise FloatingPointError("Nonfinite depth prior")
         return priors

@@ -1,0 +1,9 @@
+# E1: frozen DA-V2 ViT-S intermediate tokens only. No dense depth decoder.
+extends: ../common.yaml
+experiment:
+  id: E1
+  description: MonoIA with frozen DA-V2 encoder features only and gated residual fusion
+depth:
+  mode: gated
+  representation: four_DINO_intermediates_only
+  prior_channels: 384

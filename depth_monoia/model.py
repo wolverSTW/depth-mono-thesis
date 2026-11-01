@@ -27,9 +27,17 @@ class DepthMonoIA(nn.Module):
         super().__init__()
         self.detector = detector
         prior_path = None if checkpoint_dir is None else Path(checkpoint_dir) / "depth_anything_v2_vits.pth"
-        self.prior = FrozenDepthPrior(checkpoint=prior_path, input_size=depth_cfg["input_size"])
+        self.prior = FrozenDepthPrior(
+            checkpoint=prior_path,
+            input_size=depth_cfg["input_size"],
+            representation=depth_cfg["representation"],
+        )
+        prior_channels = depth_cfg.get("prior_channels", 385)
+        if self.prior.prior_channels != prior_channels:
+            raise ValueError("Depth representation/fusion channel contract mismatch")
         self.fusion = MultiScaleFusion(depth_cfg["mode"], detector.hidden_dim,
-                                       detector.num_feature_levels, depth_cfg["alpha_init"])
+                                       detector.num_feature_levels, depth_cfg["alpha_init"],
+                                       prior_channels=prior_channels)
         self._context = None
         self._bypass = False
         self._hooks = [detector.connector.register_forward_hook(self._capture_embedding),

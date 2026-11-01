@@ -28,6 +28,10 @@ def static_checks():
         for key in ("dataset", "model", "optimizer", "lr_scheduler", "trainer", "random_seed"):
             if cfg[key] != a0[key]:
                 raise ValueError("Uncontrolled ablation setting: " + key)
+    if (configs["E1"]["depth"]["representation"] != "four_DINO_intermediates_only" or
+            configs["E1"]["depth"]["prior_channels"] != 384 or
+            configs["E1"]["depth"]["mode"] != "gated"):
+        raise ValueError("E1 static architecture contract mismatch")
     # Isolated tensor algebra only: no dummy dataset, detector or benchmark.
     torch.manual_seed(17)
     for mode in ("simple", "gated", "intrinsic", "confidence"):
@@ -47,6 +51,13 @@ def static_checks():
         for name, p in fusion.named_parameters():
             if p.grad is None or not torch.isfinite(p.grad).all() or not p.grad.abs().sum() > 0:
                 raise AssertionError("Fusion gradient missing: " + mode + "/" + name)
+    # E1 uses precisely four 384-channel priors and zero-alpha baseline parity.
+    encoder_fusion = MultiScaleFusion("gated", prior_channels=384)
+    rgb = [torch.randn(1, 256, 3, 5) for _ in range(4)]
+    encoder_priors = [torch.randn(1, 384, 2, 3) for _ in range(4)]
+    output = encoder_fusion(rgb, encoder_priors, torch.randn(1, 256))
+    for before, after in zip(rgb, output):
+        torch.testing.assert_close(before, after, rtol=0, atol=0)
     import unittest
     import io
     import shutil
@@ -78,7 +89,11 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
         prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
         result["dav2_checkpoint"] = verify_checkpoint("dav2_small", prior_path)
         from .depth import FrozenDepthPrior
-        prior = FrozenDepthPrior(prior_path)
+        depth_cfg = load_config(config)["depth"]
+        prior = FrozenDepthPrior(prior_path, input_size=depth_cfg["input_size"],
+                                 representation=depth_cfg["representation"])
+        if depth_cfg["representation"] == "four_DINO_intermediates_only" and hasattr(prior.network, "depth_head"):
+            raise AssertionError("E1 decoder was not removed after strict pretrained loading")
         prior.train(True)
         if prior.training or any(p.requires_grad for p in prior.parameters()):
             raise AssertionError("DA-V2 freeze/eval contract failed")

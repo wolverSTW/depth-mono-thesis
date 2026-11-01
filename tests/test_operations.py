@@ -10,7 +10,7 @@ import tarfile
 import tempfile
 import unittest
 from depth_monoia.artifacts import RunLock, archive_files, restore_archive
-from depth_monoia.config import ROOT, resolve_config
+from depth_monoia.config import ROOT, resolve_config, RUN_NAMES
 from depth_monoia.provenance import sha256
 from depth_monoia.reporting import aggregate
 
@@ -89,5 +89,5 @@ class Operations(unittest.TestCase):
         aggregate(self.run, output)
         with output.open(newline="") as handle:
             rows = list(csv.DictReader(handle))
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), len(RUN_NAMES))
         self.assertTrue(all(row["evaluation_status"] == "not_evaluated" and row["AP3D_Moderate"] == "" for row in rows))
