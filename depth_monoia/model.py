@@ -26,12 +26,19 @@ class DepthMonoIA(nn.Module):
     def __init__(self, detector, depth_cfg, checkpoint_dir=None):
         super().__init__()
         self.detector = detector
-        prior_path = None if checkpoint_dir is None else Path(checkpoint_dir) / "depth_anything_v2_vits.pth"
-        self.prior = FrozenDepthPrior(
-            checkpoint=prior_path,
-            input_size=depth_cfg["input_size"],
-            representation=depth_cfg["representation"],
-        )
+        if depth_cfg["representation"] == "single_metric_vkitti_depth_in_meters_only":
+            from .metric_depth import FrozenMetricDepthPrior, METRIC_CHECKPOINT_FILENAME
+            prior_path = None if checkpoint_dir is None else Path(checkpoint_dir) / METRIC_CHECKPOINT_FILENAME
+            self.prior = FrozenMetricDepthPrior(
+                checkpoint=prior_path, input_size=depth_cfg["input_size"],
+                max_depth_m=depth_cfg["max_depth_m"])
+        else:
+            prior_path = None if checkpoint_dir is None else Path(checkpoint_dir) / "depth_anything_v2_vits.pth"
+            self.prior = FrozenDepthPrior(
+                checkpoint=prior_path,
+                input_size=depth_cfg["input_size"],
+                representation=depth_cfg["representation"],
+            )
         prior_channels = depth_cfg.get("prior_channels", 385)
         if self.prior.prior_channels != prior_channels:
             raise ValueError("Depth representation/fusion channel contract mismatch")

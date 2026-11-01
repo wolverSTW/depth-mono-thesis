@@ -1,0 +1,13 @@
+# E4a isolates frozen metric VKITTI-S versus E2's relative dense depth.
+# Original MonoIA, gating capacity, random seed and KITTI split remain unchanged.
+extends: E2.yaml
+experiment:
+  id: E4a
+  description: MonoIA + frozen DA-V2 Metric VKITTI-S depth in metres + gated fusion
+# E4b learned correction is a separate experiment and is NOT enabled here.
+depth:
+  representation: single_metric_vkitti_depth_in_meters_only
+  checkpoint_key: dav2_metric_vkitti_small
+  prior_channels: 1
+  max_depth_m: 80.0
+  metric_units: metres

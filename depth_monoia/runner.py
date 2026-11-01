@@ -35,8 +35,15 @@ def preparation(config, dataset_root, manifest, overrides=None, checkpoint_dir=N
     data = verify_dataset(cfg["dataset"]["root_dir"], manifest)
     if cfg["dataset"].get("protocol") != data["protocol"]:
         raise ValueError("Configuration and dataset manifest split protocol differ")
-    prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
-    prior = verify_checkpoint("dav2_small", prior_path) if cfg["experiment"]["id"] != "A0" else None
+    if cfg["experiment"]["id"] == "E4a":
+        from .metric_depth import METRIC_CHECKPOINT_FILENAME, METRIC_CHECKPOINT_KEY
+        prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / METRIC_CHECKPOINT_FILENAME
+        prior = verify_checkpoint(METRIC_CHECKPOINT_KEY, prior_path)
+    elif cfg["experiment"]["id"] == "A0":
+        prior = None
+    else:
+        prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
+        prior = verify_checkpoint("dav2_small", prior_path)
     code = {p.relative_to(ROOT).as_posix(): sha256(p) for folder in ("depth_monoia", "scripts") for p in sorted((ROOT / folder).rglob("*.py"))}
     identity = {"config": cfg, "sources": sources, "source_manifest_sha256": sha256(ROOT / "docs/reproducibility/sources.json"),
                 "extension_code": code, "data": data, "prior": prior}

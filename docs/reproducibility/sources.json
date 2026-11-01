@@ -30,6 +30,13 @@
       "sha256": "fe16ff24caf0ecfedc9ff106f4414c1a3bfca56fb006d6d183ce9a7fa84abafc",
       "path": "checkpoints/MonoIA_Leaderboard.pth",
       "restriction": "Never evaluate on validation: potential trainval training leakage. Test submission not automated."
+    },
+    "dav2_metric_vkitti_small": {
+      "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-VKITTI-Small/resolve/main/depth_anything_v2_metric_vkitti_vits.pth",
+      "sha256": "9203e538d35255c90dda4b7fedb47ff33fe725497bcca3b1e53b3a65ee63f0cb",
+      "path": "checkpoints/depth_anything_v2_metric_vkitti_vits.pth",
+      "representation": "outdoor metric depth (metres, 0-80 configured maximum); VKITTI2 synthetic training",
+      "license": "Apache-2.0"
     }
   }
 }

@@ -18,7 +18,7 @@ def static_checks():
     for path in files:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     # No CUDA extension import on CPU; import the actual new modules instead.
-    for module in ("config", "provenance", "fusion", "depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting", "kitti_download"):
+    for module in ("config", "provenance", "fusion", "depth", "metric_depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting", "kitti_download"):
         importlib.import_module("depth_monoia." + module)
     configs = {name: load_config(ROOT / path) for name, path in CONFIGS.items()}
     for name, cfg in configs.items():
@@ -42,6 +42,12 @@ def static_checks():
             configs["E3"]["depth"]["prior_channels"] != 1 or
             configs["E3"]["depth"]["mode"] != "intrinsic"):
         raise ValueError("E3 dense-depth intrinsic-gated contract mismatch")
+    if (configs["E4a"]["depth"]["representation"] != "single_metric_vkitti_depth_in_meters_only" or
+            configs["E4a"]["depth"]["prior_channels"] != 1 or
+            configs["E4a"]["depth"]["mode"] != "gated" or
+            configs["E4a"]["depth"]["checkpoint_key"] != "dav2_metric_vkitti_small" or
+            configs["E4a"]["depth"]["max_depth_m"] != 80.0):
+        raise ValueError("E4a verified VKITTI metric-depth source contract mismatch")
     # Isolated tensor algebra only: no dummy dataset, detector or benchmark.
     torch.manual_seed(17)
     for mode in ("simple", "gated", "intrinsic", "confidence"):
@@ -108,16 +114,28 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
     result = {"static": static_checks(), "sources": check_sources(), "environment": environment(),
               "G1": "BLOCKED", "G2": "BLOCKED", "G3": "BLOCKED", "G4": "BLOCKED", "details": {}}
     try:
-        prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
-        result["dav2_checkpoint"] = verify_checkpoint("dav2_small", prior_path)
-        from .depth import FrozenDepthPrior
         depth_cfg = load_config(config)["depth"]
-        prior = FrozenDepthPrior(prior_path, input_size=depth_cfg["input_size"],
-                                 representation=depth_cfg["representation"])
+        if depth_cfg["representation"] == "single_metric_vkitti_depth_in_meters_only":
+            from .metric_depth import (FrozenMetricDepthPrior, METRIC_CHECKPOINT_FILENAME,
+                                       METRIC_CHECKPOINT_KEY)
+            prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / METRIC_CHECKPOINT_FILENAME
+            result["dav2_checkpoint"] = verify_checkpoint(METRIC_CHECKPOINT_KEY, prior_path)
+            prior = FrozenMetricDepthPrior(prior_path, input_size=depth_cfg["input_size"],
+                                           max_depth_m=depth_cfg["max_depth_m"])
+            if prior.max_depth_m != 80.0:
+                raise AssertionError("E4a metric scale contract mismatch")
+        else:
+            prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / "depth_anything_v2_vits.pth"
+            result["dav2_checkpoint"] = verify_checkpoint("dav2_small", prior_path)
+            from .depth import FrozenDepthPrior
+            prior = FrozenDepthPrior(prior_path, input_size=depth_cfg["input_size"],
+                                     representation=depth_cfg["representation"])
         if depth_cfg["representation"] == "four_DINO_intermediates_only" and hasattr(prior.network, "depth_head"):
             raise AssertionError("E1 decoder was not removed after strict pretrained loading")
         if depth_cfg["representation"] == "single_standardized_relative_depth_map_only" and not hasattr(prior.network, "depth_head"):
             raise AssertionError("E2 requires the verified official frozen dense depth decoder")
+        if depth_cfg["representation"] == "single_metric_vkitti_depth_in_meters_only" and not hasattr(prior.network, "depth_head"):
+            raise AssertionError("E4a requires the official metric depth decoder")
         prior.train(True)
         if prior.training or any(p.requires_grad for p in prior.parameters()):
             raise AssertionError("DA-V2 freeze/eval contract failed")

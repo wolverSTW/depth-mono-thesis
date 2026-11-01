@@ -37,7 +37,7 @@ def main():
     parser.add_argument("--checkpoint")
     parser.add_argument("--checkpoint-dir", default=str(ROOT / "checkpoints"))
     parser.add_argument("--official", action="store_true")
-    parser.add_argument("--name", choices=["dav2_small", "monoia_val"])
+    parser.add_argument("--name", choices=["dav2_small", "dav2_metric_vkitti_small", "monoia_val"])
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--workers", type=int)
     parser.add_argument("--seed", type=int)
