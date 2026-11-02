@@ -115,10 +115,13 @@ def static_checks():
             "isolated_fusion_checks": "PASS: exact zero-alpha identity and two-step gradients; no KITTI gate evidence"}
 
 
-def run(config, dataset_root, manifest, output, gpu=False, reference_predictions=None, reference_metrics=None, overrides=None, checkpoint_dir=None):
+def run(config, dataset_root, manifest, output, gpu=False, reference_predictions=None, reference_metrics=None, overrides=None, checkpoint_dir=None, gate_scope='full_evaluation'):
     from .runner import preparation, components, record_hub
+    if gate_scope not in ('full_evaluation', 'training_preflight'):
+        raise ValueError('Invalid gate scope')
     result = {"static": static_checks(), "sources": check_sources(), "environment": environment(),
               "G1": "BLOCKED", "G2": "BLOCKED", "G3": "BLOCKED", "G4": "BLOCKED", "details": {}}
+    result['gate_scope'] = gate_scope
     try:
         depth_cfg = load_config(config)["depth"]
         if depth_cfg["representation"] == "single_metric_vkitti_depth_in_meters_only":
@@ -189,6 +192,8 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
                     "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
                     "action": "Stopped. Batch size/precision unchanged. Review protocol before an explicit batch reduction."}
         try:
+            if gate_scope == 'training_preflight':
+                raise ValueError('G4 deferred to final independent evaluation by approved training-first protocol; status remains BLOCKED')
             if result["details"].get("capacity", {}).get("status") == "CUDA_OOM":
                 raise ValueError("G4 not run after configured-batch CUDA OOM; no training permitted")
             if not reference_predictions or not reference_metrics:
@@ -219,7 +224,8 @@ def run(config, dataset_root, manifest, output, gpu=False, reference_predictions
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
-    return all(result[g] == "PASS" for g in ("G1", "G2", "G3", "G4"))
+    required = ("G1", "G2", "G3") if gate_scope == "training_preflight" else ("G1", "G2", "G3", "G4")
+    return all(result[g] == "PASS" for g in required)
 
 
 def g2_g3(model, criterion, optimizer, scheduler, warmup, batch, metadata, capacity=None):

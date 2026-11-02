@@ -18,7 +18,7 @@ case "$experiment" in
 esac
 if [[ ${1:-} == --help ]]; then
   echo "Usage: bash scripts/vast/train_${experiment,,}.sh [--verify-only] [--batch-size N] [--workers N] [--run-name NAME] [--resume RUN_DIRECTORY] [--stop-after-epoch N]"
-  echo "Uses $config; full real G1–G4 must pass before training. No automatic batch/AMP changes."
+  echo "Uses $config; training requires real G1-G3. G4 remains BLOCKED until independent final evaluation. No automatic batch/AMP changes."
   exit 0
 fi
 source "$(dirname -- "$0")/common.sh"
@@ -52,12 +52,8 @@ elif [[ "$verify_only" == false && -e "$OUTPUT_ROOT/$run_folder/$run_name" ]]; t
   echo 'Run already exists. Choose --run-name or explicitly --resume its directory.' >&2; exit 2
 fi
 [[ -f "$MANIFEST" ]] || { echo 'Missing dataset manifest; run prepare_kitti.sh with authentic inputs first.' >&2; exit 2; }
-if [[ ! -d "$REFERENCE_PREDICTIONS" || ! -f "$REFERENCE_METRICS" ]]; then
-  if [[ "$verify_only" == false ]]; then
-    echo 'Missing independent real G4 reference predictions/metrics; no full training permitted.' >&2; exit 2
-  fi
-  echo 'Reference evidence missing: verification may measure G2/G3 memory but G4 will remain BLOCKED and the command will exit nonzero.' >&2
-fi
+# Training-first protocol v2: G4 remains explicitly BLOCKED; never fabricate reference evidence.
+echo 'Training preflight: G1-G3 required; G4 deferred and remains BLOCKED. No final benchmark claim.' >&2
 [[ -z "$(git status --porcelain)" ]] || { echo 'Reviewed source must be committed and clean before GPU gates/training.' >&2; exit 2; }
 vast_activate
 args=(--config "$config" --experiment "$experiment" --dataset-root "$KITTI_ROOT" --manifest "$MANIFEST" --checkpoint-dir "$CHECKPOINT_DIR")
@@ -66,9 +62,9 @@ if [[ -n "$workers" ]]; then args+=(--workers "$workers"); fi
 if [[ -n "$stop_after_epoch" ]]; then args+=(--stop-after-epoch "$stop_after_epoch"); fi
 mkdir -p "$TASK_ROOT/evidence/gates"
 gates=$TASK_ROOT/evidence/gates/${experiment}_$(date -u +%Y%m%dT%H%M%S)_${BASHPID}.json
-echo "Running real configured-batch GPU gates. Evidence: $gates"
-if ! python scripts/research.py verify "${args[@]}" --gpu \
-    --reference-predictions "$REFERENCE_PREDICTIONS" --reference-metrics "$REFERENCE_METRICS" --output "$gates"; then
+echo "Running real configured-batch G1-G3 GPU gates (G4 remains BLOCKED). Evidence: $gates"
+if ! python scripts/research.py verify "${args[@]}" --gpu --gate-scope training_preflight \
+    --output "$gates"; then
   echo "Gates failed. Inspect $gates for CUDA_OOM, measured memory or missing evidence. Batch/precision unchanged; no training started." >&2
   exit 2
 fi

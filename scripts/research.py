@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--gpu", action="store_true")
     parser.add_argument("--reference-predictions")
     parser.add_argument("--reference-metrics")
+    parser.add_argument("--gate-scope", choices=("full_evaluation", "training_preflight"), default="full_evaluation")
     parser.add_argument("--gates")
     parser.add_argument("--resume")
     parser.add_argument("--stop-after-epoch", type=int,
@@ -119,7 +120,7 @@ def main():
     if args.command == "verify":
         from depth_monoia.verification import run
         success = run(config, args.dataset_root, args.manifest, args.output or ROOT / "results/verification.json",
-                      args.gpu, args.reference_predictions, args.reference_metrics, overrides, args.checkpoint_dir)
+                      args.gpu, args.reference_predictions, args.reference_metrics, overrides, args.checkpoint_dir, args.gate_scope)
         sys.exit(0 if success else 2)
     if args.command == "evaluate-all":
         from depth_monoia.runner import evaluate

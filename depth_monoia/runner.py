@@ -108,9 +108,18 @@ def train(config, dataset_root, manifest, run_dir, gate_evidence, resume=None, o
     cfg, metadata = preparation(config, dataset_root, manifest, overrides, checkpoint_dir)
     validate_stop_after_epoch(stop_after_epoch, cfg["trainer"]["max_epoch"])
     gate = json.loads(Path(gate_evidence).read_text())
-    if gate.get("identity") != metadata["identity"] or any(gate.get(g) != "PASS" for g in ("G1", "G2", "G3", "G4")):
-        raise ValueError("All four gates must PASS for this exact configuration before full training")
+    scope = gate.get("gate_scope", "full_evaluation")
+    if scope not in ("full_evaluation", "training_preflight"):
+        raise ValueError("Unrecognized GPU gate scope")
+    required = ("G1", "G2", "G3") if scope == "training_preflight" else ("G1", "G2", "G3", "G4")
+    if (gate.get("identity") != metadata["identity"]
+            or any(gate.get(g) != "PASS" for g in required)
+            or (scope == "training_preflight" and gate.get("G4") != "BLOCKED")):
+        raise ValueError("Matching GPU gate evidence required: G1-G3 PASS; G4 PASS for full scope or BLOCKED for training scope")
     metadata["verification_gates"] = gate
+    metadata["evaluation_verification_status"] = (
+        "PENDING_INDEPENDENT_G4" if scope == "training_preflight" else "G4_PASS"
+    )
     # A4 unlocked after documented A0-A3 evidence review.
     require_cuda()
     if metadata["environment"]["dirty"]:
@@ -140,7 +149,7 @@ def _train_run(cfg, metadata, run, lock, checkpoint_dir, resume, stop_after_epoc
     record_hub(metadata)
     actual_assets = {key: metadata[key] for key in ("backbone_cache", "compiled_ops")}
     if metadata["verification_gates"].get("initialization_assets") != actual_assets:
-        raise ValueError("Initialization/operator bytes changed since the GPU gates; rerun G1–G4")
+        raise ValueError("Initialization/operator bytes changed since the GPU gates; rerun matching preflight")
     metadata["created_utc"] = timestamp()
     if not resume:
         with lock:
