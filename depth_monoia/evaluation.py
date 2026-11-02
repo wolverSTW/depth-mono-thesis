@@ -1,6 +1,7 @@
 """Upstream KITTI evaluation, explicit split ordering, auxiliary distance/ECE."""
 import json
 from pathlib import Path
+import tempfile
 import numpy as np
 import torch
 from .model import upstream_path
@@ -96,13 +97,53 @@ def auxiliary(dataset, prediction_dir, output):
     return result
 
 
+def validate_detections(dets, image_ids, expected_detections, threshold):
+    """Check the pinned MonoIA [B, topk, 37] decoder input without mutation.
+
+    Columns: class, score, xywh, camera-Z, 24 heading values, 3 dimensions,
+    projected xy, depth-score factor. Upstream skips only score < threshold;
+    the final score factor must not participate in selection here.
+    """
+    ids = [f"{int(image_id):06d}" for image_id in image_ids]
+    values = dets.detach().cpu().numpy() if isinstance(dets, torch.Tensor) else np.asarray(dets)
+    expected = (len(ids), expected_detections, 37)
+    if values.shape != expected:
+        raise ValueError(
+            f"Invalid KITTI detection shape for images {', '.join(ids)}: "
+            f"expected {expected}, got {values.shape}; invalid detection count unknown")
+    if values.dtype.kind not in "fiu":
+        raise ValueError(
+            f"Invalid KITTI detection dtype for images {', '.join(ids)}; "
+            f"{values.shape[0] * values.shape[1]} invalid detections: expected real numeric fields")
+    if not np.isfinite(threshold):
+        raise ValueError("KITTI score threshold must be finite")
+    scores = values[..., 1]
+    # Match upstream's scalar comparison even across NumPy promotion versions.
+    selected = np.fromiter((not (score < threshold) for score in scores.flat),
+                           dtype=bool, count=scores.size).reshape(scores.shape)
+    invalid = (~np.isfinite(scores) |
+               (selected & (~np.isfinite(values).all(axis=-1) | (values[..., 6] <= 0))))
+    failures = [f"image {image_id}: {int(mask.sum())} invalid detections"
+                for image_id, mask in zip(ids, invalid) if mask.any()]
+    if failures:
+        raise ValueError("Invalid KITTI detections (nonfinite score/selected fields or camera-Z <= 0); "
+                         + "; ".join(failures))
+    return dets
+
+
 def infer(model, loader, cfg, prediction_dir):
+    prediction_dir = Path(prediction_dir)
+    if prediction_dir.exists() or prediction_dir.is_symlink():
+        raise FileExistsError("Prediction destination already exists; choose a new directory")
     upstream_path()
     from lib.helpers.decode_helper import extract_dets_from_outputs, decode_detections
-    prediction_dir = Path(prediction_dir)
-    prediction_dir.mkdir(parents=True, exist_ok=False)
+    prediction_dir.parent.mkdir(parents=True, exist_ok=True)
     model.eval()
-    with torch.no_grad():
+    # Failed batches must never leave a partial set at the published destination.
+    # Only this newly allocated staging directory is cleaned up on failure.
+    with tempfile.TemporaryDirectory(prefix=".inference-", dir=prediction_dir.parent) as temporary, torch.no_grad():
+        staging = Path(temporary) / "predictions"
+        staging.mkdir()
         for images, calibs, targets, info in loader:
             images, calibs = images.cuda(), calibs.cuda()
             outputs = model(images, calibs, targets, info["img_size"].cuda(), dn_args=0)
@@ -110,14 +151,19 @@ def infer(model, loader, cfg, prediction_dir):
                                             topk=cfg["tester"]["topk"]).cpu().numpy()
             calibrations = [loader.dataset.get_calib(int(i)) for i in info["img_id"]]
             info = {k: v.numpy() for k, v in info.items()}
+            validate_detections(dets, info["img_id"], cfg["tester"]["topk"],
+                                cfg["tester"]["threshold"])
             decoded = decode_detections(dets, info, calibrations, loader.dataset.cls_mean_size,
                                         cfg["tester"]["threshold"])
             for sample_id, rows in decoded.items():
-                with (prediction_dir / f"{sample_id:06d}.txt").open("w") as handle:
+                with (staging / f"{sample_id:06d}.txt").open("x") as handle:
                     for row in rows:
                         # Same formatting/threshold/decoding as upstream Tester.
                         name = loader.dataset.class_name[int(row[0])]
                         handle.write(name + " 0.0 0" + "".join(f" {v:.2f}" for v in row[1:]) + "\n")
+        if prediction_dir.exists() or prediction_dir.is_symlink():
+            raise FileExistsError("Prediction destination already exists; choose a new directory")
+        staging.rename(prediction_dir)
 
 
 def profile(model, loader, output, warmup=5, steps=20):
