@@ -76,6 +76,32 @@ class ObjectDepthCorrection(nn.Module):
         if features.shape[-1] != self.FEATURE_DIM:
             raise RuntimeError("E4b feature schema changed")
         delta = self.max_delta_m * self.mlp(features).tanh()
-        delta = torch.where(valid, delta, torch.zeros_like(delta))
+
+        # Preserve positive input depth under negative residual corrections.
+        # The correction remains zero at initialization and differentiable.
+        positive_z = z.detach().clamp_min(0.0)
+        depth_floor = torch.minimum(
+            positive_z * 0.5,
+            torch.full_like(positive_z, 1e-3),
+        )
+        available_depth = (positive_z - depth_floor).clamp_min(0.0)
+        negative_amount = (-delta).clamp_min(0.0)
+
+        safe_negative_delta = (
+            -available_depth * negative_amount
+            / (available_depth + negative_amount + 1e-12)
+        )
+
+        delta = torch.where(
+            (z.detach() > 0.0) & (delta < 0.0),
+            safe_negative_delta,
+            delta,
+        )
+        # Never convert a pre-existing nonpositive detector depth
+        # into a positive value through the correction head.
+        valid_correction = valid & (z.detach() > 0.0)
+        delta = torch.where(
+            valid_correction, delta, torch.zeros_like(delta)
+        )
         corrected = torch.cat((z + delta, z_unc[..., 1:2]), dim=-1)
         return {**outputs, "pred_depth": corrected}
