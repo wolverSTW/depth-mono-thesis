@@ -35,7 +35,7 @@ def preparation(config, dataset_root, manifest, overrides=None, checkpoint_dir=N
     data = verify_dataset(cfg["dataset"]["root_dir"], manifest)
     if cfg["dataset"].get("protocol") != data["protocol"]:
         raise ValueError("Configuration and dataset manifest split protocol differ")
-    if cfg["experiment"]["id"] == "E4a":
+    if cfg["experiment"]["id"] in ("E4a", "E4b"):
         from .metric_depth import METRIC_CHECKPOINT_FILENAME, METRIC_CHECKPOINT_KEY
         prior_path = Path(checkpoint_dir or ROOT / "checkpoints") / METRIC_CHECKPOINT_FILENAME
         prior = verify_checkpoint(METRIC_CHECKPOINT_KEY, prior_path)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared orchestration: research.py remains the only gate/training implementation.
 set -euo pipefail
-experiment=${1:?Specify A0, A1, A2, A3, A4, E1, E2, E3 or E4a}
+experiment=${1:?Specify A0, A1, A2, A3, A4, E1, E2, E3 or E4a or E4b}
 shift
 case "$experiment" in
   A0) config=configs/baseline/A0.yaml; run_folder=A0_baseline ;;
@@ -13,7 +13,8 @@ case "$experiment" in
   E2) config=configs/experiments/E2.yaml; run_folder=E2_dense_depth_only_gated_fusion ;;
   E3) config=configs/experiments/E3.yaml; run_folder=E3_dense_depth_intrinsic_gate ;;
   E4a) config=configs/experiments/E4a.yaml; run_folder=E4a_metric_vkitti_gated_fusion ;;
-  *) echo 'Only A0–A4, E1, E2, E3 and E4a are supported.' >&2; exit 2 ;;
+  E4b) config=configs/experiments/E4b.yaml; run_folder=E4b_metric_vkitti_distance_correction ;;
+  *) echo 'Only A0–A4, E1, E2, E3, E4a and E4b are supported.' >&2; exit 2 ;;
 esac
 if [[ ${1:-} == --help ]]; then
   echo "Usage: bash scripts/vast/train_${experiment,,}.sh [--verify-only] [--batch-size N] [--workers N] [--run-name NAME] [--resume RUN_DIRECTORY] [--stop-after-epoch N]"

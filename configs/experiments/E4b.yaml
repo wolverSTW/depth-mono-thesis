@@ -1,0 +1,13 @@
+# E4b: E4a metric VKITTI-S depth plus learned object-level depth residual.
+# Original KITTI split, augmentation, optimizer, epochs, seed unchanged.
+extends: E4a.yaml
+experiment:
+  id: E4b
+  description: MonoIA + frozen metric DA-V2 + object-level depth residual correction
+# Residual head learns MonoIA training-target units; metric map is evidence.
+depth:
+  distance_correction:
+    hidden_dim: 64
+    max_delta_m: 10.0
+    feature_schema: query_uv_z_logvar_class_dims_v1
+    auxiliary: unchanged

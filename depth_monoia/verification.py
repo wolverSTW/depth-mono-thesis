@@ -18,7 +18,7 @@ def static_checks():
     for path in files:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     # No CUDA extension import on CPU; import the actual new modules instead.
-    for module in ("config", "provenance", "fusion", "depth", "metric_depth", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting", "kitti_download"):
+    for module in ("config", "provenance", "fusion", "depth", "metric_depth", "distance_correction", "model", "checkpoint", "evaluation", "runner", "artifacts", "events", "reporting", "kitti_download"):
         importlib.import_module("depth_monoia." + module)
     configs = {name: load_config(ROOT / path) for name, path in CONFIGS.items()}
     for name, cfg in configs.items():
@@ -48,6 +48,12 @@ def static_checks():
             configs["E4a"]["depth"]["checkpoint_key"] != "dav2_metric_vkitti_small" or
             configs["E4a"]["depth"]["max_depth_m"] != 80.0):
         raise ValueError("E4a verified VKITTI metric-depth source contract mismatch")
+    if (configs["E4b"]["depth"].get("distance_correction", {}).get("feature_schema") !=
+            "query_uv_z_logvar_class_dims_v1" or
+            configs["E4b"]["depth"].get("representation") != configs["E4a"]["depth"].get("representation") or
+            configs["E4b"]["depth"].get("checkpoint_key") != "dav2_metric_vkitti_small" or
+            configs["E4a"]["depth"].get("distance_correction") is not None):
+        raise ValueError("E4b correction/metric provenance contract mismatch")
     # Isolated tensor algebra only: no dummy dataset, detector or benchmark.
     torch.manual_seed(17)
     for mode in ("simple", "gated", "intrinsic", "confidence"):

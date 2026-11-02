@@ -45,6 +45,14 @@ class DepthMonoIA(nn.Module):
         self.fusion = MultiScaleFusion(depth_cfg["mode"], detector.hidden_dim,
                                        detector.num_feature_levels, depth_cfg["alpha_init"],
                                        prior_channels=prior_channels)
+        correction_cfg = depth_cfg.get("distance_correction")
+        if correction_cfg is not None:
+            from .distance_correction import ObjectDepthCorrection
+            self.distance_correction = ObjectDepthCorrection(
+                hidden_dim=correction_cfg["hidden_dim"],
+                max_delta_m=correction_cfg["max_delta_m"])
+        else:
+            self.distance_correction = None
         self._context = None
         self._bypass = False
         self._hooks = [detector.connector.register_forward_hook(self._capture_embedding),
@@ -82,7 +90,11 @@ class DepthMonoIA(nn.Module):
                 a = self._context["priors"][-1][:, -1:]
                 b = flipped[-1][:, -1:].flip(-1)
                 self._context["confidence"] = torch.exp(-(a - b).abs())
-            return self.detector(images, calibs, targets, img_sizes, dn_args)
+            outputs = self.detector(images, calibs, targets, img_sizes, dn_args)
+            if self.distance_correction is not None:
+                # Shared output goes to existing depth loss AND KITTI decoder.
+                outputs = self.distance_correction(outputs, self._context["priors"][-1])
+            return outputs
         finally:
             self._context = None
 
